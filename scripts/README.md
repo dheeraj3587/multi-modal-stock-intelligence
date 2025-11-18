@@ -477,3 +477,78 @@ When adding new data sources:
 6. Update this README with usage examples
 
 See `CONTRIBUTING.md` for detailed contribution guidelines.
+
+## Feature Engineering Scripts
+
+Phase 2 introduces CLI utilities for transforming raw datasets into model-ready tensors and embeddings. They reuse the shared config/logger modules and follow the same timestamped directory conventions as Phase 1.
+
+### `feature_engineering.py`
+
+Computes pandas-ta indicators, performs temporal (60/20/20) splits, fits scalers on training data only, and generates 60-day windowed sequences suitable for LSTM/GRU/Transformer models.
+
+Usage examples:
+
+- Single ticker: `python scripts/feature_engineering.py --ticker RELIANCE.NS`
+- Custom lookback window: `--lookback-window 90`
+- Specific indicators: `--indicators RSI,MACD,EMA`
+- Custom split ratios: `--train-split 0.7 --val-split 0.15`
+- Batch processing from CSV: `--batch-mode --ticker-file tickers.csv`
+- StandardScaler instead of MinMaxScaler: `--scaler-type standard`
+
+Outputs:
+
+- `train_features.npy`, `val_features.npy`, `test_features.npy`
+- `train_targets.npy`, `val_targets.npy`, `test_targets.npy`
+- `scaler_metadata.json`, `metadata.json`
+
+### `text_embeddings.py`
+
+Loads the latest news or StockTwits payload, extracts FinBERT embeddings (768-d vectors), aligns timestamps to trading days, and optionally stores sentiment predictions from the FinBERT classifier head.
+
+Usage examples:
+
+- News embeddings: `python scripts/text_embeddings.py --ticker RELIANCE --source news`
+- Social embeddings: `python scripts/text_embeddings.py --ticker RELIANCE --source social`
+- Larger GPU batches: `--batch-size 32 --device cuda`
+- Alternate checkpoint: `--model-name yiyanghkust/finbert-tone`
+- Include sentiment classification: `--classify-sentiment`
+
+Outputs:
+
+- `embeddings_news.npy` / `embeddings_social.npy`
+- `embeddings_news_metadata.json` / `embeddings_social_metadata.json`
+
+### Output Structure
+
+Both scripts write to `data/processed/{ticker}/YYYY-MM-DD/` (same partitioning style as the ingestion layer):
+
+```
+data/processed/RELIANCE_NS/2025-11-18/
+├── train_features.npy
+├── val_features.npy
+├── test_features.npy
+├── train_targets.npy
+├── val_targets.npy
+├── test_targets.npy
+├── metadata.json
+├── scaler_metadata.json
+├── embeddings_news.npy
+├── embeddings_news_metadata.json
+└── embeddings_social.npy
+```
+
+### Data Leakage Prevention
+
+- Uses `backend.utils.preprocessing.temporal_train_test_split()` to enforce chronological ordering (doc §4.4).
+- Scalers (`MinMaxScaler`/`StandardScaler`) are fit on training samples once, then applied to validation/test (doc §4.3).
+- Window generation occurs within each split, preventing overlap between train/val/test sequences.
+- Metadata stores split indices, date ranges, indicator list, and scaler parameters for auditability.
+
+### Troubleshooting
+
+- **Insufficient history**: Ensure ≥260 price points (EMA-200 warm-up + 60-day window) before running `feature_engineering.py`.
+- **FinBERT download failures**: Confirm internet access or configure a local Hugging Face cache.
+- **CUDA out-of-memory**: Reduce `--batch-size` or force CPU via `--device cpu`.
+- **Missing indicator columns**: Verify `.env` `TECHNICAL_INDICATORS=RSI,MACD,EMA,BB,ATR` (comma-separated, not JSON) and that pandas-ta is installed.
+
+See `docs/metrics_and_evaluation.md` for the leakage rules, split ratios, and sentiment accuracy targets these scripts satisfy.

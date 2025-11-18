@@ -250,6 +250,7 @@ def save_scaler_metadata(
                 "data_max": scaler.data_max_.tolist(),
                 "data_range": scaler.data_range_.tolist(),
                 "min": scaler.min_.tolist(),
+                "scale": scaler.scale_.tolist(),
             }
         )
     elif isinstance(scaler, StandardScaler):
@@ -299,7 +300,7 @@ def load_scaler_metadata(filepath: str | Path) -> MinMaxScaler | StandardScaler:
         scaler.data_max_ = np.array(metadata["data_max"])
         scaler.data_range_ = np.array(metadata["data_range"])
         scaler.min_ = np.array(metadata["min"])
-        scaler.scale_ = (scaler.feature_range[1] - scaler.feature_range[0]) / scaler.data_range_
+        scaler.scale_ = np.array(metadata["scale"])
         scaler.n_features_in_ = metadata["n_features_in"]
     elif scaler_type == StandardScaler.__name__:
         scaler = StandardScaler()
@@ -329,6 +330,9 @@ def validate_no_leakage(
     Raises:
         ValueError: If leakage detected (overlapping indices or out-of-order dates).
     """
+    if date_column not in sorted_df.columns:
+        raise ValueError(f"Column '{date_column}' not found for leakage validation.")
+
     train_end_idx = splits["train"].end_idx - 1
     val_start_idx = splits["val"].start_idx
     val_end_idx = splits["val"].end_idx - 1

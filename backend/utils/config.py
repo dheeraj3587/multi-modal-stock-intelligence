@@ -5,6 +5,7 @@ Loads and validates environment variables from .env file using python-dotenv.
 Provides centralized access to API keys, paths, and feature engineering parameters.
 """
 
+import json
 import os
 from pathlib import Path
 from typing import Optional
@@ -118,9 +119,28 @@ class Config:
     
     @property
     def technical_indicators(self) -> list:
-        """List of technical indicators to compute."""
-        indicators = os.getenv("TECHNICAL_INDICATORS", "SMA,EMA,RSI,MACD,BB,ATR")
-        return [ind.strip() for ind in indicators.split(",") if ind.strip()]
+        """
+        List of technical indicators to compute.
+        
+        Supports both JSON array format (legacy) and comma-separated format (recommended).
+        Examples:
+            - JSON: TECHNICAL_INDICATORS='["RSI", "MACD", "EMA"]'
+            - Comma-separated: TECHNICAL_INDICATORS=RSI,MACD,EMA
+        """
+        indicators_str = os.getenv("TECHNICAL_INDICATORS", "SMA,EMA,RSI,MACD,BB,ATR")
+        
+        # Try parsing as JSON first (legacy format)
+        try:
+            indicators = json.loads(indicators_str)
+            if isinstance(indicators, list):
+                # Normalize: strip whitespace and convert to uppercase
+                return [ind.strip().upper() for ind in indicators if isinstance(ind, str) and ind.strip()]
+        except (json.JSONDecodeError, ValueError):
+            # Not JSON, fall back to comma-separated parsing
+            pass
+        
+        # Parse as comma-separated (recommended format)
+        return [ind.strip().upper() for ind in indicators_str.split(",") if ind.strip()]
 
     @property
     def scaler_type(self) -> str:

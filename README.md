@@ -35,11 +35,16 @@ graph TB
         ST[StockTwits]
         UP[Upstox WebSocket]
     end
+
+    subgraph "Storage"
+        RAW[(data/raw)]
+        PROC[(data/processed)]
+    end
     
     subgraph "Feature Engineering"
         TA[Technical Indicators]
         EMB[Text Embeddings]
-        NORM[Normalization]
+        NORM[Scaling & Windows]
     end
     
     subgraph "Model Layer"
@@ -60,16 +65,22 @@ graph TB
     subgraph "Frontend Layer"
         NEXT[Next.js Dashboard]
     end
+
+    YF --> RAW
+    NEWS --> RAW
+    ST --> RAW
     
-    YF --> TA
-    NEWS --> EMB
-    ST --> EMB
+    RAW --> TA
+    RAW --> EMB
+    TA --> NORM
+    EMB --> NORM
+    NORM --> PROC
     
-    TA --> LSTM
-    TA --> GRU
-    TA --> TRANS
-    EMB --> FINBERT
-    TA --> GROWTH
+    PROC --> LSTM
+    PROC --> GRU
+    PROC --> TRANS
+    PROC --> FINBERT
+    PROC --> GROWTH
     
     LSTM --> API
     GRU --> API
@@ -267,7 +278,7 @@ npm run dev
 
 ## Usage
 
-> **📌 Current Implementation Status**: The project is currently in **Phase 1: Data Pipelines**. Infrastructure setup is complete, and data ingestion scripts for historical prices, fundamentals, news, social sentiment, and macroeconomic indicators are now available. ML models and full API endpoints are planned for upcoming phases. See the [Project Roadmap](#project-roadmap) and [Data Pipeline](#data-pipeline) sections for details.
+> **📌 Current Implementation Status**: The project is now in **Phase 2: Feature Engineering**. Phase 1 ingestion pipelines remain available, and new scripts for technical indicators, windowed sequences, and FinBERT embeddings have been added. ML model training and full API endpoints remain in the queue for upcoming phases. See the [Data Pipeline](#data-pipeline) and [Feature Engineering](#feature-engineering) sections for quick-start examples.
 
 ### API Documentation
 
@@ -331,15 +342,64 @@ All fetched data is stored in date-partitioned subdirectories:
 - `data/raw/social/YYYY-MM-DD/` - Social sentiment (JSON)
 - `data/raw/macro/YYYY-MM-DD/` - Macroeconomic indicators (CSV)
 
-### Feature Engineering (Planned)
+## Feature Engineering
+
+Phase 2 adds standalone scripts that transform raw partitions into model-ready tensors and embeddings while enforcing the leakage rules from `docs/metrics_and_evaluation.md`.
+
+### Technical Indicators & Windowed Sequences
 
 ```bash
-# Generate technical indicators
-python scripts/generate_features.py --input data/raw/RELIANCE.csv --output data/processed/
+# Default run (RSI, MACD, EMA, BB, ATR + 60-day window)
+python scripts/feature_engineering.py --ticker RELIANCE.NS
 
-# Create time-series sequences
-python scripts/create_sequences.py --lookback 60 --horizon 7
+# Custom configuration
+python scripts/feature_engineering.py \
+  --ticker RELIANCE.NS \
+  --lookback-window 90 \
+  --train-split 0.7 --val-split 0.15 \
+  --scaler-type standard \
+  --indicators RSI,MACD,EMA
+
+# Batch mode from CSV
+python scripts/feature_engineering.py --batch-mode --ticker-file tickers.csv
 ```
+
+Outputs: `train/val/test_features.npy`, `train/val/test_targets.npy`, `metadata.json`, `scaler_metadata.json`.
+
+### FinBERT Text Embeddings
+
+```bash
+# News embeddings with default ProsusAI/finbert checkpoint
+python scripts/text_embeddings.py --ticker RELIANCE --source news
+
+# Social sentiment embeddings with sentiment labels
+python scripts/text_embeddings.py --ticker RELIANCE --source social --classify-sentiment
+
+# Larger GPU batch + alternate model
+python scripts/text_embeddings.py \
+  --ticker RELIANCE \
+  --source news \
+  --batch-size 32 \
+  --device cuda \
+  --model-name yiyanghkust/finbert-tone
+```
+
+Outputs: `embeddings_news.npy`, `embeddings_social.npy`, and their metadata files (article IDs, aligned trading days, text snippets, model/batch info).
+
+### Processed Data Layout
+
+- Stored under `data/processed/{ticker}/YYYY-MM-DD/` (same date-partition scheme as raw data)
+- Includes feature tensors, targets, scaler metadata, and embedding artifacts
+- Safe to regenerate from raw data; `.gitignore` excludes the binary outputs but keeps `.gitkeep`
+
+### Leakage Prevention Highlights
+
+- Temporal 60/20/20 splits (train oldest, test newest) enforced programmatically
+- Scalers fit only on training rows and serialized for auditability
+- Window generation runs within each split so no sample leaks future context
+- Weekend/holiday news aligned to the next trading day before joining with price features
+
+---
 
 ---
 
