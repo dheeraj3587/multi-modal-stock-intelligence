@@ -533,6 +533,23 @@ python scripts/train_forecasting_models.py --model-type transformer --ticker REL
 
 # Evaluate models
 jupyter notebook notebooks/forecasting_evaluation.ipynb
+
+### Sentiment Analysis
+
+```bash
+# Train sentiment classifier with price-based labeling
+python scripts/train_sentiment_model.py --data-dir data/raw/news --price-dir data/raw/prices --labeling-strategy price_change
+
+# With external labeled dataset
+python scripts/train_sentiment_model.py --labeled-dataset data/external/financial_phrasebank.csv --labeling-strategy manual
+```
+
+### Growth Scoring
+
+```bash
+# Train growth scorer
+python scripts/train_growth_scorer.py --fundamentals-dir data/raw/fundamentals --technical-dir data/processed --price-dir data/raw/prices --horizon-days 60
+```
 ```
 
 ### Forecasting Models
@@ -569,6 +586,27 @@ All models reference `models/base_forecaster.py` for consistent API (checkpointi
 - **Learning Rate Scheduling**: ReduceLROnPlateau with factor=0.5, patience=5
 - **Gradient Clipping**: max_norm=1.0 to prevent exploding gradients
 - **Reproducibility**: Seeded random number generators for PyTorch, NumPy, Python
+
+### Phase 3: Time-Series Forecasting Models ✅
+- ✅ LSTM Forecaster (2-layer, 128 hidden units)
+- ✅ GRU Forecaster (2-layer, 128 hidden units)
+- ✅ Transformer Forecaster (PatchTST architecture)
+- ✅ Unified training script with MLflow tracking
+- ✅ Optuna hyperparameter tuning (50 trials, Bayesian optimization)
+- ✅ Model checkpointing with metadata
+- ✅ Evaluation metrics (MAE, RMSE, Directional Accuracy, Sharpe)
+- ✅ Baseline models (ARIMA, Moving Average, Exponential Smoothing)
+- ✅ Comprehensive evaluation notebook
+- ✅ Unit tests for models, metrics, dataset
+
+### Phase 4: Sentiment Analysis & Growth Scoring ✅
+- ✅ FinBERT Sentiment Classifier (3-class: Positive, Neutral, Negative)
+- ✅ Growth Scorer Ensemble (Random Forest/Gradient Boosting)
+- ✅ Sentiment Data Pipeline (News/Social loading, labeling, tokenization)
+- ✅ Growth Data Pipeline (Fundamentals/Technical merging, feature engineering)
+- ✅ Evaluation Metrics (F1, Spearman Correlation, Top-K Precision)
+- ✅ Training Scripts with MLflow & Optuna
+- ✅ Evaluation Notebooks
 
 ### Evaluation Metrics
 

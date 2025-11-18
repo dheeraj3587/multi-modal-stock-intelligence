@@ -16,7 +16,7 @@ from .base_forecaster import BaseForecaster
 from .lstm_forecaster import LSTMForecaster
 from .gru_forecaster import GRUForecaster
 from .transformer_forecaster import TransformerForecaster
-from .model_config import LSTMConfig, GRUConfig, TransformerConfig
+from .model_config import ModelConfig, LSTMConfig, GRUConfig, TransformerConfig
 
 from .sentiment_classifier import FinBERTSentimentClassifier
 from .growth_scorer import GrowthScorer
@@ -26,6 +26,7 @@ __all__ = [
     'LSTMForecaster',
     'GRUForecaster',
     'TransformerForecaster',
+    'ModelConfig',
     'LSTMConfig',
     'GRUConfig',
     'TransformerConfig',
