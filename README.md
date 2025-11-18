@@ -1,27 +1,35 @@
-# Multi-Modal Stock Intelligence Platform
+# 📈 Multi-Modal Stock Intelligence
 
-![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
-![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)
+<div align="center">
 
-## Overview
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)](https://pytorch.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org)
+[![Docker](https://img.shields.io/badge/Docker-24.0%2B-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com)
+[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
-An AI-driven stock intelligence system that integrates **time-series forecasting**, **sentiment analysis**, **growth scoring**, and **live market data streaming** to provide comprehensive stock market insights. This platform combines deep learning models (LSTM/GRU/Transformer), natural language processing (FinBERT), and real-time data pipelines to deliver actionable intelligence for stock analysis and prediction.
+**Advanced financial analytics platform integrating deep learning, sentiment analysis, and real-time market data.**
 
-### Key Features
+[Features](#key-features) • [Architecture](#architecture) • [Quick Start](#quick-start) • [Documentation](docs/)
 
-- **🤖 Multi-Modal Time-Series Forecasting**: LSTM, GRU, and Transformer models for stock price prediction
-- **📰 Sentiment Analysis**: FinBERT-based sentiment analysis on news articles and social media
-- **📊 Growth Scoring Engine**: Proprietary scoring system evaluating fundamental and technical indicators
-- **📡 Live Market Data**: Real-time stock data streaming via Upstox WebSocket integration
-- **🚀 FastAPI Backend**: High-performance async API with WebSocket support
-- **💻 Next.js Dashboard**: Modern, responsive web interface for visualization and interaction
-- **🔄 MLOps Pipeline**: Experiment tracking with MLflow, hyperparameter optimization with Optuna
-- **📦 Containerized Deployment**: Docker-based architecture with PostgreSQL, MongoDB, and Redis
+</div>
 
-### Target Audience
+---
 
-This project serves as a comprehensive final-year engineering project and portfolio showcase, demonstrating expertise in machine learning, backend development, frontend engineering, and DevOps practices.
+## 🚀 Overview
+
+**Multi-Modal Stock Intelligence** is a production-ready forecasting engine that fuses quantitative market data with qualitative sentiment signals. Unlike traditional technical analysis tools, this platform leverages **Transformer-based architectures (PatchTST)** and **FinBERT** embeddings to capture both market momentum and investor sentiment.
+
+### ✨ Key Capabilities
+
+| Feature | Description | Tech Stack |
+|---------|-------------|------------|
+| **� Deep Forecasting** | Multi-horizon price prediction (7-day) using LSTM, GRU, and Transformers. | `PyTorch` `Optuna` |
+| **🧠 Sentiment Engine** | Real-time news and social media sentiment analysis with FinBERT. | `HuggingFace` `NewsAPI` |
+| **⚡ Real-Time Stream** | Live market data ingestion via WebSocket for sub-second updates. | `Upstox` `Redis` |
+| **📊 Growth Scoring** | Proprietary fundamental analysis algorithm for long-term value investing. | `Scikit-learn` `Pandas` |
+| **🔬 MLOps Pipeline** | End-to-end experiment tracking, model registry, and hyperparameter tuning. | `MLflow` `Docker` |
 
 ---
 
