@@ -356,13 +356,14 @@ def engineer_growth_features(
     # Scale features
     if is_train:
         # Separate scalers for different feature types
+        # Fundamentals use StandardScaler, technical features use MinMaxScaler
         if fundamental_cols:
             fund_scaler = StandardScaler()
             df[fundamental_cols] = fund_scaler.fit_transform(df[fundamental_cols])
             scalers['fundamental'] = fund_scaler
         
         if technical_cols:
-            tech_scaler = StandardScaler()
+            tech_scaler = MinMaxScaler()
             df[technical_cols] = tech_scaler.fit_transform(df[technical_cols])
             scalers['technical'] = tech_scaler
         
@@ -472,11 +473,51 @@ def temporal_subsplit(
     return new_train_df, val_df
 
 def validate_growth_features(X: np.ndarray, y: np.ndarray):
-    """Validate features and target."""
+    """
+    Validate features and target.
+    
+    Checks for:
+    - NaN values in X and y
+    - Infinite values in X and y
+    - Severe feature correlation (correlation > 0.95)
+    - Degenerate variance (near-zero variance features)
+    """
+    import warnings
+    
+    # Check for NaN
     if np.isnan(X).any():
         raise ValueError("NaN in features")
     if np.isnan(y).any():
         raise ValueError("NaN in target")
+    
+    # Check for infinite values
+    if np.isinf(X).any():
+        inf_count = np.isinf(X).sum()
+        warnings.warn(f"Infinite values detected in features: {inf_count} occurrences. This may cause issues in training.")
+    
+    if np.isinf(y).any():
+        inf_count = np.isinf(y).sum()
+        raise ValueError(f"Infinite values in target: {inf_count} occurrences")
+    
+    # Check for degenerate variance (near-zero variance features)
+    feature_vars = np.var(X, axis=0)
+    low_var_threshold = 1e-8
+    low_var_features = np.where(feature_vars < low_var_threshold)[0]
+    if len(low_var_features) > 0:
+        warnings.warn(f"Features with near-zero variance detected (indices: {low_var_features.tolist()}). "
+                     f"These features may not be informative.")
+    
+    # Check for severe feature correlation
+    if X.shape[1] > 1:
+        # Compute correlation matrix (handle NaN if any)
+        X_clean = np.nan_to_num(X, nan=0.0)
+        corr_matrix = np.corrcoef(X_clean.T)
+        # Mask diagonal and upper triangle
+        mask = np.triu(np.ones_like(corr_matrix, dtype=bool), k=1)
+        high_corr_pairs = np.where((np.abs(corr_matrix) > 0.95) & mask)
+        if len(high_corr_pairs[0]) > 0:
+            warnings.warn(f"Severe feature correlation detected (>0.95): {len(high_corr_pairs[0])} pairs. "
+                         f"This may indicate redundant features.")
         
 def save_growth_dataset(X: np.ndarray, y: np.ndarray, feature_names: List[str], output_dir: str):
     """Save processed dataset."""

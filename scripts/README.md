@@ -19,6 +19,7 @@ The data ingestion pipeline consists of five specialized scripts that fetch data
 ### Environment Setup
 
 1. **Create `.env` file** from `.env.template`:
+
    ```bash
    cp .env.template .env
    ```
@@ -38,6 +39,7 @@ pip install -r requirements.txt
 ```
 
 Key dependencies:
+
 - `yfinance` - Yahoo Finance data
 - `newsapi-python` - NewsAPI client
 - `requests` - HTTP requests for StockTwits and World Bank
@@ -50,6 +52,7 @@ Key dependencies:
 ### 1. Historical Prices
 
 **Fetch single ticker for a date range:**
+
 ```bash
 python scripts/fetch_historical_prices.py \
   --ticker RELIANCE.NS \
@@ -58,6 +61,7 @@ python scripts/fetch_historical_prices.py \
 ```
 
 **Batch process multiple tickers:**
+
 ```bash
 # Create tickers.csv with 'ticker' column
 echo "ticker" > tickers.csv
@@ -72,6 +76,7 @@ python scripts/fetch_historical_prices.py \
 ```
 
 **Incremental update (fetch only new data):**
+
 ```bash
 python scripts/fetch_historical_prices.py \
   --ticker RELIANCE.NS \
@@ -79,6 +84,7 @@ python scripts/fetch_historical_prices.py \
 ```
 
 **Weekly or monthly intervals:**
+
 ```bash
 python scripts/fetch_historical_prices.py \
   --ticker RELIANCE.NS \
@@ -90,6 +96,7 @@ python scripts/fetch_historical_prices.py \
 ### 2. Company Fundamentals
 
 **Fetch from Yahoo Finance:**
+
 ```bash
 python scripts/fetch_fundamentals.py \
   --ticker RELIANCE.NS \
@@ -97,6 +104,7 @@ python scripts/fetch_fundamentals.py \
 ```
 
 **Fetch from Alpha Vantage:**
+
 ```bash
 python scripts/fetch_fundamentals.py \
   --ticker RELIANCE.NS \
@@ -104,6 +112,7 @@ python scripts/fetch_fundamentals.py \
 ```
 
 **Include quarterly financial statements:**
+
 ```bash
 python scripts/fetch_fundamentals.py \
   --ticker RELIANCE.NS \
@@ -112,6 +121,7 @@ python scripts/fetch_fundamentals.py \
 ```
 
 **Batch processing:**
+
 ```bash
 python scripts/fetch_fundamentals.py \
   --ticker-file tickers.csv \
@@ -122,6 +132,7 @@ python scripts/fetch_fundamentals.py \
 ### 3. News Articles
 
 **Fetch news for a company (last 7 days):**
+
 ```bash
 python scripts/fetch_news.py \
   --ticker RELIANCE \
@@ -129,6 +140,7 @@ python scripts/fetch_news.py \
 ```
 
 **Custom search query:**
+
 ```bash
 python scripts/fetch_news.py \
   --query "Reliance Industries earnings" \
@@ -136,6 +148,7 @@ python scripts/fetch_news.py \
 ```
 
 **Filter by specific news sources:**
+
 ```bash
 python scripts/fetch_news.py \
   --ticker TCS \
@@ -144,6 +157,7 @@ python scripts/fetch_news.py \
 ```
 
 **With language and country filters:**
+
 ```bash
 python scripts/fetch_news.py \
   --query "stock market" \
@@ -155,12 +169,14 @@ python scripts/fetch_news.py \
 ### 4. Social Sentiment
 
 **Fetch latest StockTwits messages:**
+
 ```bash
 python scripts/fetch_social_sentiment.py \
   --ticker RELIANCE
 ```
 
 **Fetch more messages with pagination:**
+
 ```bash
 python scripts/fetch_social_sentiment.py \
   --ticker TCS \
@@ -168,6 +184,7 @@ python scripts/fetch_social_sentiment.py \
 ```
 
 **Incremental update (fetch only new messages):**
+
 ```bash
 # Get message ID from previous run's output
 python scripts/fetch_social_sentiment.py \
@@ -178,6 +195,7 @@ python scripts/fetch_social_sentiment.py \
 ### 5. Macroeconomic Indicators
 
 **Fetch specific indicators for India:**
+
 ```bash
 python scripts/fetch_macro_data.py \
   --country IND \
@@ -186,6 +204,7 @@ python scripts/fetch_macro_data.py \
 ```
 
 **Use preset indicator sets:**
+
 ```bash
 # Growth indicators
 python scripts/fetch_macro_data.py \
@@ -200,6 +219,7 @@ python scripts/fetch_macro_data.py \
 ```
 
 **Fetch for multiple countries (comparative analysis):**
+
 ```bash
 python scripts/fetch_macro_data.py \
   --country IND,USA,CHN \
@@ -208,6 +228,7 @@ python scripts/fetch_macro_data.py \
 ```
 
 **Available presets:**
+
 - `growth` - GDP and investment indicators
 - `inflation` - Inflation and price indices
 - `monetary` - Interest rates and money supply
@@ -260,17 +281,20 @@ data/raw/
 All scripts implement robust error handling:
 
 ### Retry Logic
+
 - **Exponential backoff** - Automatic retries with increasing delays
 - **Max retries** - Configurable retry limits (default: 3)
 - **Transient error handling** - Recovers from network timeouts, 5xx errors
 
 ### Rate Limiting
+
 - **NewsAPI** - 100 requests/day (free tier)
 - **StockTwits** - 200 requests/hour (authenticated)
 - **Token bucket algorithm** - Smooth request distribution
 - **429 error handling** - Respects API rate limit responses
 
 ### Logging
+
 - **Structured logs** - JSON format for production
 - **Log rotation** - Automatic rotation at 10 MB
 - **Log retention** - 30-day retention policy
@@ -333,25 +357,25 @@ for ticker in tickers:
         bash_command=f'python scripts/fetch_historical_prices.py --ticker {ticker} --incremental',
         dag=dag,
     )
-    
+
     fetch_fundamentals = BashOperator(
         task_id=f'fetch_fundamentals_{ticker.replace(".", "_")}',
         bash_command=f'python scripts/fetch_fundamentals.py --ticker {ticker} --source yahoo',
         dag=dag,
     )
-    
+
     fetch_news = BashOperator(
         task_id=f'fetch_news_{ticker.split(".")[0]}',
         bash_command=f'python scripts/fetch_news.py --ticker {ticker.split(".")[0]} --days 1',
         dag=dag,
     )
-    
+
     fetch_social = BashOperator(
         task_id=f'fetch_social_{ticker.split(".")[0]}',
         bash_command=f'python scripts/fetch_social_sentiment.py --ticker {ticker.split(".")[0]}',
         dag=dag,
     )
-    
+
     # Set dependencies (all can run in parallel)
     # fetch_prices, fetch_fundamentals, fetch_news, fetch_social run independently
 
@@ -374,6 +398,7 @@ ConfigError: NEWSAPI_KEY not found in environment variables
 ```
 
 **Solution:** Ensure `.env` file exists and contains the required API key:
+
 ```bash
 echo "NEWSAPI_KEY=your_key_here" >> .env
 ```
@@ -384,7 +409,8 @@ echo "NEWSAPI_KEY=your_key_here" >> .env
 RateLimitError: Rate limit exceeded. Retry after 3600 seconds.
 ```
 
-**Solution:** 
+**Solution:**
+
 - Wait for the rate limit window to reset
 - Reduce request frequency
 - Consider upgrading to paid API tier
@@ -396,7 +422,8 @@ RateLimitError: Rate limit exceeded. Retry after 3600 seconds.
 ValueError: No data returned for ticker RELIANCE
 ```
 
-**Solution:** 
+**Solution:**
+
 - For Yahoo Finance, use exchange suffix (e.g., `RELIANCE.NS` for NSE)
 - For StockTwits, use base symbol without suffix (e.g., `RELIANCE`)
 - Verify ticker exists on the platform
@@ -408,6 +435,7 @@ RequestException: Connection timeout after 30 seconds
 ```
 
 **Solution:**
+
 - Scripts automatically retry with exponential backoff
 - Check internet connection
 - Verify API endpoints are accessible
@@ -420,6 +448,7 @@ ModuleNotFoundError: No module named 'yfinance'
 ```
 
 **Solution:**
+
 ```bash
 pip install -r requirements.txt
 ```
@@ -434,11 +463,13 @@ python scripts/fetch_historical_prices.py --ticker RELIANCE.NS --incremental
 ```
 
 Check log files for errors:
+
 ```bash
 tail -f logs/app.log
 ```
 
 View JSON logs for structured analysis:
+
 ```bash
 cat logs/app.json | jq '.[] | select(.level=="ERROR")'
 ```
@@ -552,12 +583,13 @@ data/processed/RELIANCE_NS/2025-11-18/
 - **Missing indicator columns**: Verify `.env` `TECHNICAL_INDICATORS=RSI,MACD,EMA,BB,ATR` (comma-separated, not JSON) and that pandas-ta is installed.
 
 See `docs/metrics_and_evaluation.md` for the leakage rules, split ratios, and sentiment accuracy targets these scripts satisfy.
+
 ## Phase 4: Sentiment & Growth Scoring
-    
+
 ### Sentiment Analysis Training
-    
+
 Train FinBERT-based sentiment classifier for 3-class financial sentiment.
-    
+
 ```bash
 # Basic training with price-based labeling
 python scripts/train_sentiment_model.py --data-dir data/raw/news --price-dir data/raw/prices --labeling-strategy price_change
@@ -570,6 +602,7 @@ python scripts/train_sentiment_model.py --data-dir data/raw/news --price-dir dat
 ```
 
 **Key Arguments:**
+
 - `--data-dir`: Path to news data
 - `--price-dir`: Path to price data (required for price_change and hybrid strategies)
 - `--labeling-strategy`: 'price_change', 'manual', or 'hybrid'
@@ -597,6 +630,7 @@ python scripts/train_sentiment_model.py \
 ```
 
 Optuna searches over:
+
 - Learning rate: [1e-5, 5e-5] (log scale)
 - Batch size: [8, 16, 32]
 - Dropout: [0.1, 0.5]
@@ -620,6 +654,7 @@ python scripts/train_growth_scorer.py --cross-stock-split --fundamentals-dir dat
 ```
 
 **Key Arguments:**
+
 - `--fundamentals-dir`: Path to fundamentals data
 - `--technical-dir`: Path to processed technical indicators
 - `--price-dir`: Path to price data (required)
@@ -649,12 +684,14 @@ python scripts/train_growth_scorer.py \
 ```
 
 Optuna searches over:
+
 - N estimators: [50, 300] (step=50)
 - Max depth: [5, 30]
 - Min samples split: [2, 20]
 - Learning rate (gradient boosting only): [0.01, 0.3] (log scale)
 
 The best hyperparameters are automatically used for final training, and all trial results are logged to MLflow.
+
 ## Phase 3: Model Training
 
 Phase 3 introduces the unified training script for LSTM, GRU, and Transformer forecasting models with MLflow experiment tracking and Optuna hyperparameter tuning.
@@ -662,6 +699,7 @@ Phase 3 introduces the unified training script for LSTM, GRU, and Transformer fo
 ### `train_forecasting_models.py`
 
 Trains time-series forecasting models on preprocessed data from Phase 2, with support for:
+
 - Three model architectures (LSTM, GRU, Transformer/PatchTST)
 - MLflow experiment tracking (hyperparameters, metrics, artifacts)
 - Optuna Bayesian hyperparameter optimization
@@ -673,6 +711,7 @@ Trains time-series forecasting models on preprocessed data from Phase 2, with su
 #### Usage Examples
 
 **Basic training:**
+
 ```bash
 python scripts/train_forecasting_models.py \
   --model-type lstm \
@@ -681,6 +720,7 @@ python scripts/train_forecasting_models.py \
 ```
 
 **With hyperparameter tuning:**
+
 ```bash
 python scripts/train_forecasting_models.py \
   --model-type transformer \
@@ -690,6 +730,7 @@ python scripts/train_forecasting_models.py \
 ```
 
 **Using custom configuration:**
+
 ```bash
 python scripts/train_forecasting_models.py \
   --model-type gru \
@@ -698,6 +739,7 @@ python scripts/train_forecasting_models.py \
 ```
 
 **With specific device and seed:**
+
 ```bash
 python scripts/train_forecasting_models.py \
   --model-type lstm \
@@ -727,6 +769,7 @@ python scripts/train_forecasting_models.py \
 
 **Checkpoints:**
 Saved to `models/checkpoints/<model_type>_<ticker>_<timestamp>.pth` with accompanying `.json` metadata containing:
+
 - Training hyperparameters (hidden_dim, num_layers, dropout, etc.)
 - Training history (train_loss, val_loss, val_mae per epoch)
 - Best epoch and validation metrics
@@ -734,12 +777,14 @@ Saved to `models/checkpoints/<model_type>_<ticker>_<timestamp>.pth` with accompa
 
 **MLflow Runs:**
 Logged to `MLFLOW_TRACKING_URI` (from `.env`) with:
+
 - Parameters: model_type, ticker, seed, all hyperparameters
 - Metrics: train_loss, val_loss, val_mae, learning_rate (per epoch)
 - Artifacts: Best model checkpoint
 
 **Training Logs:**
 Standard output and `logs/app.log` with structured logging of:
+
 - Model parameter count
 - Per-epoch training progress (with tqdm progress bars)
 - Early stopping triggers
@@ -755,47 +800,61 @@ Standard output and `logs/app.log` with structured logging of:
 #### Troubleshooting
 
 **CUDA out of memory:**
+
 ```
 RuntimeError: CUDA out of memory
 ```
+
 **Solution:** Reduce batch size or use CPU:
+
 ```bash
 python scripts/train_forecasting_models.py --model-type lstm --ticker RELIANCE.NS --batch-size 16 --device cpu
 ```
 
 **Missing processed data:**
+
 ```
 FileNotFoundError: No processed data found for ticker RELIANCE.NS
 ```
+
 **Solution:** Run feature engineering first:
+
 ```bash
 python scripts/feature_engineering.py --ticker RELIANCE.NS
 ```
 
 **MLflow connection errors:**
+
 ```
 MlflowException: Failed to connect to tracking URI
 ```
+
 **Solution:** Check `MLFLOW_TRACKING_URI` in `.env` or disable MLflow by uninstalling it (script will warn and continue without tracking).
 
 **Optuna import error:**
+
 ```
 ImportError: Optuna not available
 ```
+
 **Solution:** Don't use `--tune` flag, or install Optuna:
+
 ```bash
 pip install optuna>=3.4.0
 ```
 
 **Invalid hyperparameters:**
+
 ```
 ValueError: patch_len (13) must divide lookback_window (60)
 ```
+
 **Solution:** For Transformer, use valid patch lengths: 6, 10, 12, 15, 20, or 30.
 
 #### Evaluation
 
 After training, use `notebooks/forecasting_evaluation.ipynb` to:
+
 - Load trained models and generate predictions
 - Compute MAE, RMSE, MAPE, Directional Accuracy metrics
 - Compare against ARIMA/MA/ES baselines
@@ -804,4 +863,3 @@ After training, use `notebooks/forecasting_evaluation.ipynb` to:
 - Run trading simulations (target: Sharpe ≥1.0)
 
 See `docs/metrics_and_evaluation.md` for evaluation criteria and success thresholds.
-

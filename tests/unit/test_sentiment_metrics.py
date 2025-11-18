@@ -3,7 +3,8 @@ import numpy as np
 import pandas as pd
 from backend.utils.sentiment_metrics import (
     precision_score, recall_score, f1_score, 
-    compute_confusion_matrix, sentiment_price_correlation
+    compute_confusion_matrix, sentiment_price_correlation,
+    compare_to_baseline
 )
 
 class TestSentimentMetrics:
@@ -42,3 +43,71 @@ class TestSentimentMetrics:
     def test_input_validation(self):
         with pytest.raises(ValueError):
             precision_score(np.array([1]), np.array([1, 2]))
+    
+    def test_compare_to_baseline_f1(self):
+        # Model performs better than baseline
+        y_true = np.array([0, 0, 1, 1, 2, 2])
+        y_pred_model = np.array([0, 0, 1, 1, 2, 2])  # Perfect
+        y_pred_baseline = np.array([0, 1, 1, 2, 2, 0])  # Some errors
+        
+        result = compare_to_baseline(y_true, y_pred_model, y_pred_baseline, metric='f1')
+        
+        assert 'model_score' in result
+        assert 'baseline_score' in result
+        assert 'improvement_pct' in result
+        assert 'p_value' in result
+        assert 'test_stat' in result
+        
+        assert result['model_score'] == 1.0
+        assert result['baseline_score'] < 1.0
+        assert result['improvement_pct'] > 0
+        assert 0 <= result['p_value'] <= 1
+        assert result['test_stat'] >= 0
+    
+    def test_compare_to_baseline_accuracy(self):
+        # Test with accuracy metric
+        y_true = np.array([0, 0, 1, 1, 2, 2])
+        y_pred_model = np.array([0, 0, 1, 1, 2, 2])
+        y_pred_baseline = np.array([0, 1, 1, 2, 2, 0])
+        
+        result = compare_to_baseline(y_true, y_pred_model, y_pred_baseline, metric='accuracy')
+        
+        assert result['model_score'] == 1.0
+        assert result['baseline_score'] < 1.0
+        assert 'p_value' in result
+        assert 'test_stat' in result
+    
+    def test_compare_to_baseline_no_discordant_pairs(self):
+        # When model and baseline are identical, no discordant pairs
+        y_true = np.array([0, 1, 2])
+        y_pred_model = np.array([0, 1, 2])
+        y_pred_baseline = np.array([0, 1, 2])
+        
+        result = compare_to_baseline(y_true, y_pred_model, y_pred_baseline, metric='f1')
+        
+        assert result['model_score'] == result['baseline_score']
+        assert result['improvement_pct'] == 0.0
+        assert result['p_value'] == 1.0  # No significant difference
+        assert result['test_stat'] == 0.0
+    
+    def test_compare_to_baseline_synthetic_data(self):
+        # Create synthetic data where model is significantly better
+        np.random.seed(42)
+        y_true = np.random.randint(0, 3, size=100)
+        y_pred_baseline = y_true.copy()
+        # Baseline gets 30% wrong
+        baseline_errors = np.random.choice(100, size=30, replace=False)
+        y_pred_baseline[baseline_errors] = np.random.randint(0, 3, size=30)
+        
+        y_pred_model = y_true.copy()
+        # Model gets only 10% wrong
+        model_errors = np.random.choice(100, size=10, replace=False)
+        y_pred_model[model_errors] = np.random.randint(0, 3, size=10)
+        
+        result = compare_to_baseline(y_true, y_pred_model, y_pred_baseline, metric='f1')
+        
+        assert result['model_score'] > result['baseline_score']
+        assert result['improvement_pct'] > 0
+        assert 'p_value' in result
+        assert 0 <= result['p_value'] <= 1
+        assert result['test_stat'] >= 0

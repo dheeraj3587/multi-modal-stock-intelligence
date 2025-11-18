@@ -199,6 +199,16 @@ def main():
     
     logger.info(f"Loaded {len(news_df)} news articles")
     
+    # Load social sentiment data if directory is provided
+    social_df = pd.DataFrame()
+    if args.social_dir and os.path.exists(args.social_dir):
+        logger.info(f"Loading social sentiment data from {args.social_dir}...")
+        social_df = load_social_sentiment(args.social_dir)
+        if not social_df.empty:
+            logger.info(f"Loaded {len(social_df)} social sentiment records")
+        else:
+            logger.warning(f"No social sentiment data found in {args.social_dir}")
+    
     # Label Data based on strategy
     if args.labeling_strategy == 'price_change':
         # Load price data for labeling
@@ -237,11 +247,31 @@ def main():
             else:
                 logger.error("Labeled dataset must contain 'text' and 'label' columns")
                 return
-        elif 'sentiment_label' in news_df.columns or 'label' in news_df.columns:
-            df = create_labeled_dataset(news_df, None, args.labeling_strategy)
         else:
-            logger.error("Manual labeling requires either --labeled-dataset or 'sentiment_label'/'label' column in the data.")
-            return
+            # Merge social sentiment data with news_df if available
+            combined_df = news_df.copy()
+            if not social_df.empty and 'sentiment_label' in social_df.columns:
+                logger.info("Merging social sentiment data with news articles...")
+                # Concatenate social data with news data
+                # Ensure both have required columns
+                if 'text' not in social_df.columns:
+                    logger.warning("Social data missing 'text' column, skipping social data merge")
+                else:
+                    # Add missing columns to social_df if needed
+                    if 'ticker' not in social_df.columns:
+                        social_df['ticker'] = 'UNKNOWN'
+                    if 'published_at' not in social_df.columns:
+                        social_df['published_at'] = pd.Timestamp.now()
+                    # Concatenate
+                    combined_df = pd.concat([combined_df, social_df], ignore_index=True)
+                    logger.info(f"Combined dataset size: {len(combined_df)} (news: {len(news_df)}, social: {len(social_df)})")
+            
+            # Check for sentiment_label column in combined data
+            if 'sentiment_label' in combined_df.columns or 'label' in combined_df.columns:
+                df = create_labeled_dataset(combined_df, None, args.labeling_strategy)
+            else:
+                logger.error("Manual labeling requires either --labeled-dataset or 'sentiment_label'/'label' column in the data (from news or social sources).")
+                return
         
     elif args.labeling_strategy == 'hybrid':
         # Hybrid approach: use manual labels where available, price_change otherwise
@@ -251,20 +281,68 @@ def main():
         from backend.utils.sentiment_data import load_prices_for_labeling
         price_df = load_prices_for_labeling(args.price_dir)
         
-        # For rows with manual labels, use them; for others, use price-based
-        if 'sentiment_label' in news_df.columns:
-            manual_labeled = news_df[news_df['sentiment_label'].notna()]
-            unlabeled = news_df[news_df['sentiment_label'].isna()]
+        if price_df.empty:
+            logger.error("No price data found. Cannot use hybrid labeling strategy without price data.")
+            return
+        
+        # Combine news and social data
+        combined_df = news_df.copy()
+        if not social_df.empty and 'sentiment_label' in social_df.columns:
+            logger.info("Merging social sentiment data with news articles...")
+            if 'text' not in social_df.columns:
+                logger.warning("Social data missing 'text' column, skipping social data merge")
+            else:
+                # Add missing columns to social_df if needed
+                if 'ticker' not in social_df.columns:
+                    social_df['ticker'] = 'UNKNOWN'
+                if 'published_at' not in social_df.columns:
+                    social_df['published_at'] = pd.Timestamp.now()
+                # Concatenate
+                combined_df = pd.concat([combined_df, social_df], ignore_index=True)
+                logger.info(f"Combined dataset size: {len(combined_df)} (news: {len(news_df)}, social: {len(social_df)})")
+        
+        # Check for external labeled dataset
+        if args.labeled_dataset:
+            logger.info(f"Loading external labeled dataset from {args.labeled_dataset}...")
+            labeled_df = pd.read_csv(args.labeled_dataset)
+            if 'text' in labeled_df.columns and 'label' in labeled_df.columns:
+                # Add to combined_df with sentiment_label
+                if 'sentiment_label' not in labeled_df.columns:
+                    # Map label to sentiment_label format
+                    label_to_sentiment = {0: 'Bullish', 1: 'Neutral', 2: 'Bearish'}
+                    labeled_df['sentiment_label'] = labeled_df['label'].map(label_to_sentiment)
+                # Ensure required columns
+                if 'ticker' not in labeled_df.columns:
+                    labeled_df['ticker'] = 'UNKNOWN'
+                if 'published_at' not in labeled_df.columns:
+                    labeled_df['published_at'] = pd.Timestamp.now()
+                combined_df = pd.concat([combined_df, labeled_df], ignore_index=True)
+        
+        # Separate rows with manual labels from unlabeled rows
+        if 'sentiment_label' in combined_df.columns:
+            manual_labeled = combined_df[combined_df['sentiment_label'].notna()].copy()
+            unlabeled = combined_df[combined_df['sentiment_label'].isna()].copy()
+            
+            logger.info(f"Manual labeled rows: {len(manual_labeled)}, Unlabeled rows: {len(unlabeled)}")
             
             # Create datasets separately
-            df_manual = create_labeled_dataset(manual_labeled, None, 'manual')
-            df_price = create_labeled_dataset(unlabeled, price_df, 'price_change') if not price_df.empty else pd.DataFrame()
+            df_manual = create_labeled_dataset(manual_labeled, None, 'manual') if not manual_labeled.empty else pd.DataFrame()
+            df_price = create_labeled_dataset(unlabeled, price_df, 'price_change') if not unlabeled.empty else pd.DataFrame()
             
             # Combine
-            df = pd.concat([df_manual, df_price], ignore_index=True)
+            if not df_manual.empty and not df_price.empty:
+                df = pd.concat([df_manual, df_price], ignore_index=True)
+            elif not df_manual.empty:
+                df = df_manual
+            elif not df_price.empty:
+                df = df_price
+            else:
+                logger.error("No labeled data generated from hybrid strategy")
+                return
         else:
-            # Fall back to price-based
-            df = create_labeled_dataset(news_df, price_df, 'price_change')
+            # Fall back to price-based if no manual labels available
+            logger.warning("No manual labels found (from social data or external dataset), falling back to price-based labeling")
+            df = create_labeled_dataset(combined_df, price_df, 'price_change')
     
     else:
         logger.error(f"Unknown labeling strategy: {args.labeling_strategy}")
@@ -350,8 +428,8 @@ def main():
             train_metrics = train_epoch(model, train_loader, optimizer, scheduler, device)
             val_metrics = validate(model, val_loader, device)
             
-            logger.info(f"Train Loss: {train_metrics['loss']:.4f}, Precision: {train_metrics.get('precision_macro', 0):.4f}, Recall: {train_metrics.get('recall_macro', 0):.4f}, F1: {train_metrics['f1']['macro']:.4f}")
-            logger.info(f"Val Loss: {val_metrics['loss']:.4f}, Precision: {val_metrics.get('precision_macro', 0):.4f}, Recall: {val_metrics.get('recall_macro', 0):.4f}, F1: {val_metrics['f1']['macro']:.4f}")
+            logger.info(f"Train Loss: {train_metrics['loss']:.4f}, Precision: {train_metrics.get('precision', {}).get('macro', 0):.4f}, Recall: {train_metrics.get('recall', {}).get('macro', 0):.4f}, F1: {train_metrics['f1']['macro']:.4f}")
+            logger.info(f"Val Loss: {val_metrics['loss']:.4f}, Precision: {val_metrics.get('precision', {}).get('macro', 0):.4f}, Recall: {val_metrics.get('recall', {}).get('macro', 0):.4f}, F1: {val_metrics['f1']['macro']:.4f}")
             
             mlflow.log_metrics({f"train_{k}": v for k, v in train_metrics.items() if isinstance(v, (int, float))}, step=epoch)
             mlflow.log_metrics({f"val_{k}": v for k, v in val_metrics.items() if isinstance(v, (int, float))}, step=epoch)
@@ -384,8 +462,8 @@ def main():
         logger.info("=" * 50)
         logger.info("TEST SET RESULTS:")
         logger.info(f"Test Loss: {test_metrics['loss']:.4f}")
-        logger.info(f"Test Precision (macro): {test_metrics.get('precision_macro', 0):.4f}")
-        logger.info(f"Test Recall (macro): {test_metrics.get('recall_macro', 0):.4f}")
+        logger.info(f"Test Precision (macro): {test_metrics.get('precision', {}).get('macro', 0):.4f}")
+        logger.info(f"Test Recall (macro): {test_metrics.get('recall', {}).get('macro', 0):.4f}")
         logger.info(f"Test F1 (macro): {test_metrics['f1']['macro']:.4f}")
         logger.info(f"Test Weighted F1: {test_metrics.get('weighted_f1', 0):.4f}")
         
@@ -398,8 +476,8 @@ def main():
         
         # Log test metrics to MLflow
         mlflow.log_metrics({f"test_{k}": v for k, v in test_metrics.items() if isinstance(v, (int, float))})
-        mlflow.log_metric("test_precision_macro", test_metrics.get('precision_macro', 0))
-        mlflow.log_metric("test_recall_macro", test_metrics.get('recall_macro', 0))
+        mlflow.log_metric("test_precision_macro", test_metrics.get('precision', {}).get('macro', 0))
+        mlflow.log_metric("test_recall_macro", test_metrics.get('recall', {}).get('macro', 0))
         mlflow.log_metric("test_f1_macro", test_metrics['f1']['macro'])
         mlflow.log_metric("test_weighted_f1", test_metrics.get('weighted_f1', 0))
                     

@@ -4,7 +4,7 @@ from sklearn.metrics import precision_score as sk_precision
 from sklearn.metrics import recall_score as sk_recall
 from sklearn.metrics import f1_score as sk_f1
 from sklearn.metrics import confusion_matrix, classification_report as sk_report
-from scipy.stats import pearsonr, ttest_rel
+from scipy.stats import pearsonr, ttest_rel, chi2
 from typing import Dict, Any, List, Optional, Union, Tuple
 
 def validate_inputs(y_true: np.ndarray, y_pred: np.ndarray):
@@ -24,8 +24,8 @@ def precision_score(y_true: np.ndarray, y_pred: np.ndarray, average: str = 'macr
     per_class = sk_precision(y_true, y_pred, average=None, zero_division=0)
     
     return {
-        'precision_macro': float(macro),
-        'precision_per_class': per_class.tolist()
+        'macro': float(macro),
+        'per_class': per_class.tolist()
     }
 
 def recall_score(y_true: np.ndarray, y_pred: np.ndarray, average: str = 'macro') -> Dict[str, float]:
@@ -38,8 +38,8 @@ def recall_score(y_true: np.ndarray, y_pred: np.ndarray, average: str = 'macro')
     per_class = sk_recall(y_true, y_pred, average=None, zero_division=0)
     
     return {
-        'recall_macro': float(macro),
-        'recall_per_class': per_class.tolist()
+        'macro': float(macro),
+        'per_class': per_class.tolist()
     }
 
 def f1_score(y_true: np.ndarray, y_pred: np.ndarray, average: str = 'macro') -> Dict[str, float]:
@@ -149,12 +149,13 @@ def compare_to_baseline(
     metric: str = 'f1'
 ) -> Dict[str, float]:
     """
-    Compare model performance to baseline using paired t-test on sample-wise metrics?
-    For classification, we can use McNemar's test for binary/multiclass agreement, 
-    or paired t-test on cross-validation folds. 
-    Here we'll just compute metric difference and maybe a simple p-value if applicable.
+    Compare model performance to baseline using McNemar's test for statistical significance.
     
-    For simplicity in this utility, we'll return the improvement %.
+    For classification, we compute overall correctness for model and baseline per sample,
+    then apply McNemar's test on the 2×2 contingency table to derive a p-value.
+    
+    Returns:
+        Dictionary with model_score, baseline_score, improvement_pct, p_value, and test_stat.
     """
     validate_inputs(y_true, y_pred_model)
     validate_inputs(y_true, y_pred_baseline)
@@ -170,10 +171,32 @@ def compare_to_baseline(
         
     improvement = (score_model - score_baseline) / score_baseline if score_baseline != 0 else 0.0
     
+    # McNemar's test: compute correctness for each sample
+    model_correct = (y_pred_model == y_true)
+    baseline_correct = (y_pred_baseline == y_true)
+    
+    # Contingency table:
+    # b = model correct, baseline incorrect
+    # c = model incorrect, baseline correct
+    b = int(np.logical_and(model_correct, ~baseline_correct).sum())
+    c = int(np.logical_and(~model_correct, baseline_correct).sum())
+    
+    # McNemar's test statistic: (|b - c| - 1)^2 / (b + c)
+    # with continuity correction
+    if b + c > 0:
+        test_stat = (abs(b - c) - 1) ** 2 / (b + c)
+        p_value = float(chi2.sf(test_stat, df=1))
+    else:
+        # No discordant pairs, cannot compute test
+        test_stat = 0.0
+        p_value = 1.0
+    
     return {
         'model_score': float(score_model),
         'baseline_score': float(score_baseline),
-        'improvement_pct': float(improvement * 100)
+        'improvement_pct': float(improvement * 100),
+        'p_value': p_value,
+        'test_stat': float(test_stat)
     }
 
 def compute_all_sentiment_metrics(
@@ -184,8 +207,8 @@ def compute_all_sentiment_metrics(
 ) -> Dict[str, Any]:
     """Compute all sentiment metrics."""
     metrics = {}
-    metrics.update(precision_score(y_true, y_pred))
-    metrics.update(recall_score(y_true, y_pred))
+    metrics['precision'] = precision_score(y_true, y_pred)
+    metrics['recall'] = recall_score(y_true, y_pred)
     metrics['f1'] = f1_score(y_true, y_pred)
     metrics['weighted_f1'] = weighted_f1_score(y_true, y_pred)
     metrics['confusion_matrix'] = compute_confusion_matrix(y_true, y_pred)
