@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from backend.utils.logger import get_logger
 from backend.utils.config import Config
-from backend.utils.api_helpers import RateLimiter, handle_api_error
+from backend.utils.api_helpers import RateLimiter, handle_api_error, retry_with_backoff
 from backend.utils.file_operations import create_timestamped_directory, save_json, load_existing_data
 
 
@@ -30,6 +30,29 @@ config = Config()
 
 # Rate limiter for NewsAPI (100 requests per day for free tier)
 news_rate_limiter = RateLimiter(max_requests=100, time_window=86400)  # 24 hours
+
+
+def _fetch_with_retry(newsapi, use_top_headlines: bool, **kwargs) -> Dict:
+    """
+    Helper function to fetch news with retry logic.
+    
+    Args:
+        newsapi: NewsAPI client instance.
+        use_top_headlines: If True, use get_top_headlines; otherwise use get_everything.
+        **kwargs: Parameters to pass to the NewsAPI method.
+        
+    Returns:
+        API response dictionary.
+    """
+    @retry_with_backoff(max_retries=3, backoff_factor=2.0, initial_delay=1.0, 
+                       exceptions=(NewsAPIException, Exception))
+    def _do_fetch():
+        if use_top_headlines:
+            return newsapi.get_top_headlines(**kwargs)
+        else:
+            return newsapi.get_everything(**kwargs)
+    
+    return _do_fetch()
 
 
 def fetch_news_articles(
@@ -74,17 +97,28 @@ def fetch_news_articles(
         from_param = start_date.strftime("%Y-%m-%d")
         to_param = end_date.strftime("%Y-%m-%d")
         
-        # Fetch articles using get_everything endpoint
-        # Note: 'country' parameter is only for top-headlines, not get_everything
-        response = newsapi.get_everything(
-            q=query,
-            from_param=from_param,
-            to=to_param,
-            language=language,
-            sources=sources,
-            sort_by=sort_by,
-            page_size=100  # Max per request
-        )
+        if country:
+            logger.info(f"Using top-headlines mode for country '{country}'")
+            response = _fetch_with_retry(
+                newsapi,
+                use_top_headlines=True,
+                q=query,
+                country=country,
+                language=language,
+                page_size=100
+            )
+        else:
+            response = _fetch_with_retry(
+                newsapi,
+                use_top_headlines=False,
+                q=query,
+                from_param=from_param,
+                to=to_param,
+                language=language,
+                sources=sources,
+                sort_by=sort_by,
+                page_size=100
+            )
         
         articles = response.get('articles', [])
         total_results = response.get('totalResults', 0)
@@ -245,7 +279,7 @@ Examples:
   # Filter by specific news sources
   python fetch_news.py --ticker TCS --sources "economic-times,business-standard" --days 14
   
-  # Fetch with country filter (for top headlines)
+  # Fetch with country filter
   python fetch_news.py --query "stock market" --country in --days 7
         """
     )

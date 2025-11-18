@@ -6,16 +6,33 @@ file I/O operations, and data quality validation.
 """
 
 import json
-import fcntl
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, List, Union
 import pandas as pd
 
+try:
+    import fcntl
+    HAS_FCNTL = True
+except ImportError:
+    HAS_FCNTL = False
+
 
 class FileOperationError(Exception):
     """Raised when file operations fail."""
     pass
+
+
+def _lock_file(file_handle):
+    """Acquire exclusive lock on file."""
+    if HAS_FCNTL:
+        fcntl.flock(file_handle.fileno(), fcntl.LOCK_EX)
+
+
+def _unlock_file(file_handle):
+    """Release file lock."""
+    if HAS_FCNTL:
+        fcntl.flock(file_handle.fileno(), fcntl.LOCK_UN)
 
 
 def create_timestamped_directory(base_path: Union[str, Path], date: Optional[datetime] = None) -> Path:
@@ -77,15 +94,13 @@ def save_dataframe_to_csv(
         
         # Write CSV with file locking to prevent concurrent write conflicts
         with open(filepath, mode, newline='') as f:
-            # Acquire exclusive lock
-            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+            _lock_file(f)
             try:
                 # Write header only if not appending or file is new
                 header = not append_mode or not filepath.exists()
                 df.to_csv(f, index=index, header=header)
             finally:
-                # Release lock
-                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+                _unlock_file(f)
                 
     except Exception as e:
         raise FileOperationError(f"Failed to save DataFrame to {filepath}: {str(e)}")
@@ -111,13 +126,11 @@ def save_json(data: Union[dict, list], filepath: Union[str, Path], indent: int =
         
         # Write JSON with file locking
         with open(filepath, 'w') as f:
-            # Acquire exclusive lock
-            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+            _lock_file(f)
             try:
                 json.dump(data, f, indent=indent, ensure_ascii=False)
             finally:
-                # Release lock
-                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+                _unlock_file(f)
                 
     except Exception as e:
         raise FileOperationError(f"Failed to save JSON to {filepath}: {str(e)}")

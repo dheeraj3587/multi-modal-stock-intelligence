@@ -82,11 +82,17 @@ dmypy.json
 # Data & Models (Large Files - Use DVC)
 # ============================================================
 data/raw/*
-data/processed/*
 data/external/*
 !data/raw/.gitkeep
-!data/processed/.gitkeep
 !data/external/.gitkeep
+
+# Processed features/embeddings are reproducible from raw data and should stay
+# out of Git history to avoid binary bloat. Keep directory structure via .gitkeep.
+data/processed/**/
+data/processed/**/*.npy
+data/processed/**/*.json
+data/processed/**/*.pkl
+!data/processed/.gitkeep
 
 # Keep subdirectory structure but ignore data files
 !data/raw/prices/

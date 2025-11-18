@@ -109,7 +109,7 @@ def save_price_data(df: pd.DataFrame, ticker: str, output_dir: Path) -> Path:
             logger.warning(f"  - {error}")
     
     # Save to CSV
-    save_dataframe_to_csv(df, filepath, index=False)
+    save_dataframe_to_csv(df, filepath, append_mode=False, index=False)
     logger.info(f"Saved {len(df)} records to {filepath}")
     
     return filepath

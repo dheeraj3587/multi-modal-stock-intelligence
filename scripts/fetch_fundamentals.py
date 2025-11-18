@@ -237,12 +237,16 @@ def fetch_quarterly_financials(ticker: str) -> Dict:
     try:
         stock = yf.Ticker(ticker)
         
+        quarterly_income = stock.quarterly_financials if hasattr(stock, 'quarterly_financials') else None
+        quarterly_balance = stock.quarterly_balance_sheet if hasattr(stock, 'quarterly_balance_sheet') else None
+        quarterly_cash = stock.quarterly_cashflow if hasattr(stock, 'quarterly_cashflow') else None
+        
         financials = {
             'ticker': ticker,
             'fetch_date': datetime.now().isoformat(),
-            'quarterly_income_statement': stock.quarterly_income_stmt.to_dict() if hasattr(stock, 'quarterly_income_stmt') and stock.quarterly_income_stmt is not None else {},
-            'quarterly_balance_sheet': stock.quarterly_balance_sheet.to_dict() if hasattr(stock, 'quarterly_balance_sheet') and stock.quarterly_balance_sheet is not None else {},
-            'quarterly_cash_flow': stock.quarterly_cashflow.to_dict() if hasattr(stock, 'quarterly_cashflow') and stock.quarterly_cashflow is not None else {},
+            'quarterly_income_statement': quarterly_income.to_dict() if quarterly_income is not None and not quarterly_income.empty else {},
+            'quarterly_balance_sheet': quarterly_balance.to_dict() if quarterly_balance is not None and not quarterly_balance.empty else {},
+            'quarterly_cash_flow': quarterly_cash.to_dict() if quarterly_cash is not None and not quarterly_cash.empty else {},
         }
         
         # Convert timestamp keys to strings for JSON serialization

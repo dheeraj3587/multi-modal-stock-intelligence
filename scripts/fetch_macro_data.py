@@ -265,7 +265,7 @@ def save_macro_data(df: pd.DataFrame, country: str, output_dir: Path, save_forma
     if save_format == 'csv':
         filename = f"{country}_macro.csv"
         filepath = date_dir / filename
-        save_dataframe_to_csv(df, filepath, index=False)
+        save_dataframe_to_csv(df, filepath, append_mode=False, index=False)
     else:
         filename = f"{country}_macro.json"
         filepath = date_dir / filename

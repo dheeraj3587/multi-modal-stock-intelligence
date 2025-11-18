@@ -7,6 +7,7 @@ backoff, token bucket rate limiting, and standardized error handling.
 
 import time
 import functools
+import json
 from typing import Callable, Dict, Optional, Any
 from datetime import datetime, timedelta
 import requests
@@ -256,7 +257,7 @@ def validate_api_response(
         else:
             raise ValueError(f"Unsupported response format: {response_format}")
             
-    except requests.exceptions.JSONDecodeError as e:
+    except (ValueError, json.JSONDecodeError) as e:
         raise APIResponseError(f"Failed to parse JSON response: {str(e)}")
 
 

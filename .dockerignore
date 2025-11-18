@@ -1,0 +1,72 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.pyc
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+*.egg-info/
+
+# Version Control
+.git/
+.gitignore
+.gitattributes
+
+# Environment & Secrets
+.env
+.env.*
+*.pem
+*.key
+
+# Data & Models (large files, should be mounted as volumes)
+data/
+models/checkpoints/
+mlruns/
+
+# Logs
+logs/
+*.log
+
+# Notebooks
+notebooks/
+.ipynb_checkpoints/
+
+# Tests
+tests/
+
+# Frontend
+frontend/
+node_modules/
+
+# Docker
+docker/
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Documentation
+README.md
+docs/
+*.md
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+

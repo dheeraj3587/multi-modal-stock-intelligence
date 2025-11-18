@@ -120,7 +120,84 @@ class Config:
     def technical_indicators(self) -> list:
         """List of technical indicators to compute."""
         indicators = os.getenv("TECHNICAL_INDICATORS", "SMA,EMA,RSI,MACD,BB,ATR")
-        return [ind.strip() for ind in indicators.split(",")]
+        return [ind.strip() for ind in indicators.split(",") if ind.strip()]
+
+    @property
+    def scaler_type(self) -> str:
+        """
+        Default scaler type for feature pipelines.
+
+        Returns 'minmax' or 'standard' (default minmax) aligned with docs Section 4.4.
+        """
+        scaler = os.getenv("SCALER_TYPE", "minmax").lower()
+        if scaler not in {"minmax", "standard"}:
+            raise ConfigError("SCALER_TYPE must be 'minmax' or 'standard'.")
+        return scaler
+
+    @property
+    def train_split_ratio(self) -> float:
+        """Training split proportion (default 0.6 per docs Section 4.4)."""
+        value = float(os.getenv("TRAIN_SPLIT_RATIO", "0.6"))
+        if not 0 < value < 1:
+            raise ConfigError("TRAIN_SPLIT_RATIO must be between 0 and 1.")
+        return value
+
+    @property
+    def val_split_ratio(self) -> float:
+        """Validation split proportion (default 0.2)."""
+        value = float(os.getenv("VAL_SPLIT_RATIO", "0.2"))
+        if not 0 < value < 1:
+            raise ConfigError("VAL_SPLIT_RATIO must be between 0 and 1.")
+        return value
+
+    @property
+    def test_split_ratio(self) -> float:
+        """Test split proportion (default 0.2)."""
+        value = float(os.getenv("TEST_SPLIT_RATIO", "0.2"))
+        if not 0 < value < 1:
+            raise ConfigError("TEST_SPLIT_RATIO must be between 0 and 1.")
+        return value
+
+    def validate_split_ratios(self, tolerance: float = 0.01) -> tuple[float, float, float]:
+        """
+        Validate that train/val/test ratios sum to 1 within tolerance.
+
+        Args:
+            tolerance: Acceptable floating point tolerance (default 0.01).
+
+        Returns:
+            Tuple of validated ratios (train, val, test).
+        """
+        train = self.train_split_ratio
+        val = self.val_split_ratio
+        test = self.test_split_ratio
+        total = train + val + test
+        if abs(total - 1.0) > tolerance:
+            raise ConfigError(
+                f"Train/val/test ratios must sum to 1.0 +/- {tolerance}. Current total: {total:.4f}"
+            )
+        return train, val, test
+
+    @property
+    def finbert_model_name(self) -> str:
+        """Default FinBERT checkpoint for embeddings."""
+        return os.getenv("FINBERT_MODEL_NAME", "ProsusAI/finbert")
+
+    @property
+    def finbert_batch_size(self) -> int:
+        """Default batch size for FinBERT inference (default 16)."""
+        value = int(os.getenv("FINBERT_BATCH_SIZE", "16"))
+        if value <= 0:
+            raise ConfigError("FINBERT_BATCH_SIZE must be positive.")
+        return value
+
+    @property
+    def finbert_max_length(self) -> int:
+        """Maximum token length for FinBERT inputs (default 512)."""
+        value = int(os.getenv("FINBERT_MAX_LENGTH", "512"))
+        if not 1 <= value <= 512:
+            raise ConfigError("FINBERT_MAX_LENGTH must be between 1 and 512.")
+        return value
     
     # Helper Methods
     def get_data_dir(self, subdir: str = "") -> Path:
