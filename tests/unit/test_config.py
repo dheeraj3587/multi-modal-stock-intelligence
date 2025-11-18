@@ -154,3 +154,4 @@ class TestConfigScalerType:
             with pytest.raises(ConfigError, match="must be 'minmax' or 'standard'"):
                 _ = config.scaler_type
 
+
