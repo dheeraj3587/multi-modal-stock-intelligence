@@ -552,7 +552,109 @@ data/processed/RELIANCE_NS/2025-11-18/
 - **Missing indicator columns**: Verify `.env` `TECHNICAL_INDICATORS=RSI,MACD,EMA,BB,ATR` (comma-separated, not JSON) and that pandas-ta is installed.
 
 See `docs/metrics_and_evaluation.md` for the leakage rules, split ratios, and sentiment accuracy targets these scripts satisfy.
+## Phase 4: Sentiment & Growth Scoring
+    
+### Sentiment Analysis Training
+    
+Train FinBERT-based sentiment classifier for 3-class financial sentiment.
+    
+```bash
+# Basic training with price-based labeling
+python scripts/train_sentiment_model.py --data-dir data/raw/news --price-dir data/raw/prices --labeling-strategy price_change
 
+# With manual labels from external dataset
+python scripts/train_sentiment_model.py --data-dir data/raw/news --labeled-dataset data/external/financial_phrasebank.csv --labeling-strategy manual
+
+# Hybrid labeling (manual + price-based)
+python scripts/train_sentiment_model.py --data-dir data/raw/news --price-dir data/raw/prices --labeling-strategy hybrid
+```
+
+**Key Arguments:**
+- `--data-dir`: Path to news data
+- `--price-dir`: Path to price data (required for price_change and hybrid strategies)
+- `--labeling-strategy`: 'price_change', 'manual', or 'hybrid'
+- `--labeled-dataset`: Path to external labeled CSV (for manual/hybrid strategy)
+- `--model-name`: Hugging Face model ID (default: ProsusAI/finbert)
+- `--freeze-bert`: Freeze BERT layers initially (default: False, use flag to enable)
+- `--batch-size`: Training batch size (default: 16)
+- `--learning-rate`: Learning rate (default: 2e-5)
+- `--max-epochs`: Maximum training epochs (default: 10)
+- `--tune`: Enable Optuna hyperparameter tuning
+- `--num-trials`: Number of Optuna trials for tuning (default: 20)
+
+**Hyperparameter Tuning:**
+
+Enable automated hyperparameter search with Optuna to find optimal configuration:
+
+```bash
+# Run 20 trials to find best hyperparameters
+python scripts/train_sentiment_model.py \
+  --data-dir data/raw/news \
+  --price-dir data/raw/prices \
+  --labeling-strategy price_change \
+  --tune \
+  --num-trials 20
+```
+
+Optuna searches over:
+- Learning rate: [1e-5, 5e-5] (log scale)
+- Batch size: [8, 16, 32]
+- Dropout: [0.1, 0.5]
+- Freeze BERT: [True, False]
+
+The best hyperparameters are automatically used for final training, and results are logged to MLflow.
+
+### Growth Scorer Training
+
+Train growth scoring ensemble (Random Forest/Gradient Boosting).
+
+```bash
+# Basic training
+python scripts/train_growth_scorer.py --fundamentals-dir data/raw/fundamentals --technical-dir data/processed --price-dir data/raw/prices --horizon-days 60
+
+# Different model types
+python scripts/train_growth_scorer.py --model-type gradient_boosting --n-estimators 200 --max-depth 15
+
+# Cross-stock generalization testing
+python scripts/train_growth_scorer.py --cross-stock-split --fundamentals-dir data/raw/fundamentals --tune --num-trials 30
+```
+
+**Key Arguments:**
+- `--fundamentals-dir`: Path to fundamentals data
+- `--technical-dir`: Path to processed technical indicators
+- `--price-dir`: Path to price data (required)
+- `--model-type`: 'random_forest' or 'gradient_boosting'
+- `--horizon-days`: Forward return horizon (default: 60)
+- `--n-estimators`: Number of trees (default: 100)
+- `--max-depth`: Maximum tree depth (default: 10)
+- `--min-samples-split`: Minimum samples to split node (default: 5)
+- `--learning-rate`: Learning rate for gradient boosting (default: 0.1)
+- `--cross-stock-split`: Enables generalization to unseen stocks (80% train tickers, 20% test; sector-balanced); computes per-sector Spearman in MLflow
+- `--tune`: Enable Optuna hyperparameter tuning
+- `--num-trials`: Number of Optuna trials for tuning (default: 30)
+
+**Hyperparameter Tuning:**
+
+Enable automated hyperparameter search with Optuna to maximize validation Spearman correlation:
+
+```bash
+# Run 30 trials to find best hyperparameters
+python scripts/train_growth_scorer.py \
+  --fundamentals-dir data/raw/fundamentals \
+  --technical-dir data/processed \
+  --price-dir data/raw/prices \
+  --model-type random_forest \
+  --tune \
+  --num-trials 30
+```
+
+Optuna searches over:
+- N estimators: [50, 300] (step=50)
+- Max depth: [5, 30]
+- Min samples split: [2, 20]
+- Learning rate (gradient boosting only): [0.01, 0.3] (log scale)
+
+The best hyperparameters are automatically used for final training, and all trial results are logged to MLflow.
 ## Phase 3: Model Training
 
 Phase 3 introduces the unified training script for LSTM, GRU, and Transformer forecasting models with MLflow experiment tracking and Optuna hyperparameter tuning.
