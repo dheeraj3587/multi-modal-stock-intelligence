@@ -201,46 +201,36 @@ flowchart TB
 
 ---
 
-## Technology Stack
+## 🛠️ Technology Stack
 
-### Backend
-- **Framework**: FastAPI (async web framework)
-- **Language**: Python 3.10+
-- **Real-time**: WebSockets for live data streaming
-- **Caching**: Redis
-- **Databases**: PostgreSQL (relational), MongoDB (document store)
+### Core Infrastructure
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white)
 
-### Machine Learning / AI
-- **Deep Learning**: PyTorch (LSTM, GRU, Transformer)
-- **NLP**: Hugging Face Transformers (FinBERT)
-- **Traditional ML**: scikit-learn (growth scoring)
-- **Hyperparameter Tuning**: Optuna
-- **Experiment Tracking**: MLflow
+### Machine Learning & AI
+![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)
+![HuggingFace](https://img.shields.io/badge/HuggingFace-FFD21E?style=for-the-badge&logo=huggingface&logoColor=black)
+![Scikit-Learn](https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)
+![MLflow](https://img.shields.io/badge/MLflow-0194E2?style=for-the-badge&logo=mlflow&logoColor=white)
+![Optuna](https://img.shields.io/badge/Optuna-4B8BBE?style=for-the-badge&logo=python&logoColor=white)
 
-### Data Sources & Processing
-- **Market Data**: yfinance, Upstox API
-- **News**: NewsAPI
-- **Social Sentiment**: StockTwits
-- **Processing**: pandas, NumPy
-- **Technical Analysis**: TA-Lib, pandas-ta
-
-### Frontend
-- **Framework**: Next.js 14 (React)
-- **Styling**: TailwindCSS
-- **Charts**: Plotly / Recharts
-- **State Management**: React Query / Zustand
-
-### DevOps & Infrastructure
-- **Containerization**: Docker, Docker Compose
-- **CI/CD**: GitHub Actions
-- **Data Versioning**: DVC
-- **Monitoring**: Prometheus, Loguru
+### Frontend & Visualization
+![Next.js](https://img.shields.io/badge/Next.js-black?style=for-the-badge&logo=next.js&logoColor=white)
+![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
+![Plotly](https://img.shields.io/badge/Plotly-3F4F75?style=for-the-badge&logo=plotly&logoColor=white)
 
 ---
 
-## Project Structure
+## 📂 Project Structure
 
-```
+<details>
+<summary><b>Click to expand directory tree</b></summary>
+
+```bash
 test/
 ├── backend/                 # FastAPI application
 │   ├── api/                # API route handlers
@@ -288,6 +278,7 @@ test/
 ├── pytest.ini              # pytest configuration
 └── README.md               # This file
 ```
+</details>
 
 ---
 
@@ -384,9 +375,13 @@ npm run dev
 
 ---
 
-## Usage
+## ⚡ Usage
 
-> **📌 Current Implementation Status**: The project is now in **Phase 3: Time-Series Forecasting Models**. Phase 1 ingestion pipelines and Phase 2 feature engineering are complete. LSTM, GRU, and Transformer models have been implemented with MLflow experiment tracking and Optuna hyperparameter tuning. See the [Model Training](#model-training) section for quick-start examples or review the comprehensive [evaluation notebook](notebooks/forecasting_evaluation.ipynb).
+### �️ Dashboard & API
+
+- **Dashboard**: [http://localhost:3000](http://localhost:3000) - Real-time analytics
+- **API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs) - Swagger UI
+- **MLflow**: [http://localhost:5000](http://localhost:5000) - Experiment tracking
 
 ### API Documentation
 
@@ -423,11 +418,11 @@ Track experiments for:
 
 ---
 
-## Data Pipeline
-
-Phase 1 data ingestion scripts are now available! These scripts fetch data from various sources and store it in timestamp-partitioned directories under `data/raw/`. For detailed usage instructions, see [scripts/README.md](scripts/README.md).
-
-### Fetch Historical Data
+## 🔄 Core Workflows
+    
+### 1. Data Ingestion
+    
+Phase 1 scripts fetch data from various sources and store it in timestamp-partitioned directories under `data/raw/`.
 
 ```bash
 # Fetch historical prices for a ticker
@@ -461,11 +456,9 @@ All fetched data is stored in date-partitioned subdirectories:
 - `data/raw/social/YYYY-MM-DD/` - Social sentiment (JSON)
 - `data/raw/macro/YYYY-MM-DD/` - Macroeconomic indicators (CSV)
 
-## Feature Engineering
+### 2. Feature Engineering
 
-Phase 2 adds standalone scripts that transform raw partitions into model-ready tensors and embeddings while enforcing the leakage rules from `docs/metrics_and_evaluation.md`.
-
-### Technical Indicators & Windowed Sequences
+Phase 2 transforms raw partitions into model-ready tensors and embeddings while enforcing leakage rules.
 
 ```bash
 # Default run (RSI, MACD, EMA, BB, ATR + 60-day window)
@@ -522,11 +515,11 @@ Outputs: `embeddings_news.npy`, `embeddings_social.npy`, and their metadata file
 
 ---
 
-## Model Training
+### 3. Model Training
 
 Phase 3 introduces production-ready time-series forecasting models with comprehensive training infrastructure.
 
-### Quick Start
+#### Quick Start
 
 ```bash
 # Train LSTM model
@@ -719,77 +712,25 @@ Refer to [docs/metrics_and_evaluation.md](docs/metrics_and_evaluation.md) for de
 
 ---
 
-## Project Roadmap
+## 🗺️ Roadmap
 
-### Phase 0: Infrastructure Setup ✅
-- ✅ Project structure and directory hierarchy
-- ✅ Docker configuration (backend, frontend, databases)
-- ✅ Basic FastAPI application with health check
-- ✅ Environment configuration template
-- ✅ Git ignore patterns and DVC setup
-- ✅ Testing framework configuration
+### ✅ Completed Modules
+- **Infrastructure**: Docker ecosystem, FastAPI skeleton, DVC setup.
+- **Data Pipeline**: Historical prices, fundamentals, news, social sentiment, macro data.
+- **Feature Engineering**: Technical indicators (RSI/MACD), windowing, FinBERT embeddings.
+- **Forecasting Models**: LSTM, GRU, Transformer (PatchTST) implementations.
+- **MLOps**: MLflow tracking, Optuna tuning, checkpointing.
+- **Evaluation**: Backtesting engine, Sharpe ratio, MAE/RMSE metrics.
 
-### Phase 1: Data Pipelines 🔄 (In Progress)
-- ✅ Historical price data collection scripts (yfinance)
-- ✅ Company fundamentals fetching (Yahoo Finance / Alpha Vantage)
-- ✅ News data aggregation (NewsAPI)
-- ✅ Social sentiment collection (StockTwits)
-- ✅ Macroeconomic indicators (World Bank API)
-- ✅ Timestamp-based data partitioning
-- ✅ Rate limiting and retry logic
-- ✅ Comprehensive logging and error handling
-- 📅 Feature engineering pipeline
-- 📅 Data validation and quality checks
+### 🚧 In Progress
+- **Sentiment Analysis**: Fine-tuning FinBERT on financial news.
+- **Growth Scoring**: Fundamental analysis algorithm.
+- **Live Integration**: Upstox WebSocket real-time inference.
 
-### Phase 2: Feature Engineering ✅
-- ✅ Technical indicators (RSI, MACD, EMA, BB, ATR via pandas-ta)
-- ✅ Temporal train/val/test splits (60/20/20, chronological ordering)
-- ✅ Windowed sequence generation (60-day lookback)
-- ✅ Scaler fitting and persistence (MinMaxScaler/StandardScaler)
-- ✅ FinBERT text embeddings (news and social sentiment)
-- ✅ Data leakage prevention per docs Section 4.3/4.4
-
-### Phase 3: Time-Series Forecasting Models ✅
-- ✅ LSTM Forecaster (2-layer, 128 hidden units)
-- ✅ GRU Forecaster (2-layer, 128 hidden units)
-- ✅ Transformer Forecaster (PatchTST architecture)
-- ✅ Unified training script with MLflow tracking
-- ✅ Optuna hyperparameter tuning (50 trials, Bayesian optimization)
-- ✅ Model checkpointing with metadata
-- ✅ Evaluation metrics (MAE, RMSE, Directional Accuracy, Sharpe)
-- ✅ Baseline models (ARIMA, Moving Average, Exponential Smoothing)
-- ✅ Comprehensive evaluation notebook
-- ✅ Unit tests for models, metrics, dataset
-
-### Phase 4: FinBERT Sentiment Analysis 📅
-- FinBERT fine-tuning on financial news
-- Sentiment classification pipeline
-- Multi-modal feature fusion
-- Growth scoring algorithm
-- Model evaluation and selection
-
-### Phase 3: Live Integration 📅
-- Upstox WebSocket integration
-- Real-time inference pipeline
-- Streaming data processing
-
-### Phase 4: Backend API 📅
-- FastAPI endpoint implementation
-- Database setup and ORM
-- Caching layer with Redis
-- Authentication and authorization
-
-### Phase 5: Frontend Dashboard 📅
-- Next.js UI development
-- Interactive charts and visualizations
-- Real-time updates
-- User experience optimization
-
-### Phase 6: Deployment 📅
-- Production Docker configuration
-- CI/CD pipeline setup
-- Cloud deployment (AWS/GCP/Azure)
-- Monitoring and logging
+### 📅 Upcoming
+- **Backend API**: Full REST endpoints for predictions.
+- **Frontend**: Next.js dashboard implementation.
+- **Deployment**: Cloud infrastructure (AWS/GCP).
 
 ---
 
