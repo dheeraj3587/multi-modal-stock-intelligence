@@ -28,73 +28,168 @@ This project serves as a comprehensive final-year engineering project and portfo
 ## Architecture
 
 ```mermaid
-graph TB
-    subgraph "Data Layer"
-        YF[Yahoo Finance]
-        NEWS[NewsAPI]
-        ST[StockTwits]
-        UP[Upstox WebSocket]
-    end
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#0066cc','primaryTextColor':'#fff','primaryBorderColor':'#004d99','lineColor':'#666','secondaryColor':'#00cc66','tertiaryColor':'#ff9933'}}}%%
 
-    subgraph "Storage"
-        RAW[(data/raw)]
-        PROC[(data/processed)]
+flowchart TB
+    %% ==================== DATA SOURCES LAYER ====================
+    subgraph DataSources["🌐 Data Sources Layer"]
+        direction LR
+        YF["📈 Yahoo Finance<br/><small>Historical OHLCV</small>"]
+        NEWS["📰 NewsAPI<br/><small>Financial News</small>"]
+        ST["💬 StockTwits<br/><small>Social Sentiment</small>"]
+        UP["⚡ Upstox WebSocket<br/><small>Live Market Data</small>"]
+        MACRO["🌍 World Bank<br/><small>Macro Indicators</small>"]
     end
     
-    subgraph "Feature Engineering"
-        TA[Technical Indicators]
-        EMB[Text Embeddings]
-        NORM[Scaling & Windows]
+    %% ==================== STORAGE LAYER ====================
+    subgraph Storage["💾 Data Storage Layer"]
+        direction TB
+        RAW[("📁 Raw Data<br/><small>data/raw/</small>")]
+        PROC[("📊 Processed Data<br/><small>data/processed/</small>")]
     end
     
-    subgraph "Model Layer"
-        LSTM[LSTM Model]
-        GRU[GRU Model]
-        TRANS[Transformer]
-        FINBERT[FinBERT]
-        GROWTH[Growth Scorer]
+    %% ==================== FEATURE ENGINEERING ====================
+    subgraph FeatureEng["⚙️ Feature Engineering Pipeline"]
+        direction TB
+        subgraph Technical["Technical Analysis"]
+            TA["📉 Technical Indicators<br/><small>RSI, MACD, EMA, BB, ATR</small>"]
+        end
+        subgraph NLP["Natural Language Processing"]
+            EMB["🤖 FinBERT Embeddings<br/><small>ProsusAI/finbert</small>"]
+            SENT["💭 Sentiment Analysis<br/><small>News & Social</small>"]
+        end
+        subgraph Prep["Data Preparation"]
+            NORM["🔄 Scaling & Windowing<br/><small>60-day lookback</small>"]
+            SPLIT["✂️ Train/Val/Test Split<br/><small>60/20/20</small>"]
+        end
     end
     
-    subgraph "Backend Layer"
-        API[FastAPI]
-        REDIS[Redis Cache]
-        PG[PostgreSQL]
-        MONGO[MongoDB]
+    %% ==================== ML MODELS LAYER ====================
+    subgraph Models["🧠 Machine Learning Models"]
+        direction TB
+        subgraph Forecasting["Time-Series Forecasting"]
+            LSTM["🔷 LSTM<br/><small>2-layer, 128 units</small>"]
+            GRU["🔶 GRU<br/><small>2-layer, 128 units</small>"]
+            TRANS["⭐ Transformer<br/><small>PatchTST Architecture</small>"]
+        end
+        subgraph TextModels["NLP Models"]
+            FINBERT["📝 FinBERT<br/><small>Sentiment Classifier</small>"]
+        end
+        subgraph Analytics["Analytics"]
+            GROWTH["📊 Growth Scorer<br/><small>Fundamental Analysis</small>"]
+            BASELINE["📐 Baselines<br/><small>ARIMA, MA, ES</small>"]
+        end
     end
     
-    subgraph "Frontend Layer"
-        NEXT[Next.js Dashboard]
+    %% ==================== MLOPS LAYER ====================
+    subgraph MLOps["🔬 MLOps & Experiment Tracking"]
+        direction LR
+        MLFLOW["📊 MLflow<br/><small>Tracking & Registry</small>"]
+        OPTUNA["🎯 Optuna<br/><small>Hyperparameter Tuning</small>"]
+        CKPT["💾 Checkpoints<br/><small>Model Versioning</small>"]
     end
-
-    YF --> RAW
-    NEWS --> RAW
-    ST --> RAW
     
-    RAW --> TA
-    RAW --> EMB
-    TA --> NORM
-    EMB --> NORM
-    NORM --> PROC
+    %% ==================== BACKEND LAYER ====================
+    subgraph Backend["🚀 Backend Services"]
+        direction TB
+        API["⚡ FastAPI<br/><small>REST + WebSocket</small>"]
+        subgraph DataStores["Data Persistence"]
+            REDIS["⚡ Redis<br/><small>Caching Layer</small>"]
+            PG["🐘 PostgreSQL<br/><small>Relational DB</small>"]
+            MONGO["🍃 MongoDB<br/><small>Document Store</small>"]
+        end
+    end
     
-    PROC --> LSTM
-    PROC --> GRU
-    PROC --> TRANS
-    PROC --> FINBERT
-    PROC --> GROWTH
+    %% ==================== FRONTEND LAYER ====================
+    subgraph Frontend["💻 User Interface"]
+        NEXT["⚛️ Next.js Dashboard<br/><small>Real-time Visualization</small>"]
+    end
     
-    LSTM --> API
-    GRU --> API
-    TRANS --> API
-    FINBERT --> API
-    GROWTH --> API
-    UP --> API
+    %% ==================== DATA FLOW CONNECTIONS ====================
     
-    API --> REDIS
-    API --> PG
-    API --> MONGO
+    %% Data Ingestion
+    YF -->|"Daily OHLCV"| RAW
+    NEWS -->|"Articles"| RAW
+    ST -->|"Messages"| RAW
+    MACRO -->|"Economics"| RAW
     
-    API --> NEXT
+    %% Feature Engineering Flow
+    RAW -->|"Price Data"| TA
+    RAW -->|"Text Data"| EMB
+    RAW -->|"Text Data"| SENT
+    
+    TA -->|"Features"| NORM
+    EMB -->|"Embeddings"| NORM
+    SENT -->|"Scores"| NORM
+    
+    NORM -->|"Scaled"| SPLIT
+    SPLIT -->|"Train/Val/Test"| PROC
+    
+    %% Model Training Flow
+    PROC -->|"Training Data"| LSTM
+    PROC -->|"Training Data"| GRU
+    PROC -->|"Training Data"| TRANS
+    PROC -->|"Text Features"| FINBERT
+    PROC -->|"Fundamentals"| GROWTH
+    PROC -->|"Baseline Data"| BASELINE
+    
+    %% MLOps Integration
+    LSTM -.->|"Metrics"| MLFLOW
+    GRU -.->|"Metrics"| MLFLOW
+    TRANS -.->|"Metrics"| MLFLOW
+    
+    OPTUNA -.->|"Optimize"| LSTM
+    OPTUNA -.->|"Optimize"| GRU
+    OPTUNA -.->|"Optimize"| TRANS
+    
+    LSTM -.->|"Save"| CKPT
+    GRU -.->|"Save"| CKPT
+    TRANS -.->|"Save"| CKPT
+    
+    %% API Integration
+    LSTM -->|"Predictions"| API
+    GRU -->|"Predictions"| API
+    TRANS -->|"Predictions"| API
+    FINBERT -->|"Sentiment"| API
+    GROWTH -->|"Scores"| API
+    UP -->|"Live Data"| API
+    
+    %% Backend Storage
+    API <-->|"Cache"| REDIS
+    API <-->|"Persist"| PG
+    API <-->|"Documents"| MONGO
+    
+    %% Frontend Connection
+    API <-->|"WebSocket<br/>REST API"| NEXT
+    
+    %% ==================== STYLING ====================
+    
+    classDef dataSource fill:#0066cc,stroke:#004d99,stroke-width:3px,color:#fff
+    classDef storage fill:#00cc66,stroke:#009944,stroke-width:3px,color:#fff
+    classDef processing fill:#ff9933,stroke:#cc6600,stroke-width:3px,color:#fff
+    classDef model fill:#9933ff,stroke:#6600cc,stroke-width:3px,color:#fff
+    classDef mlops fill:#ff3366,stroke:#cc0044,stroke-width:3px,color:#fff
+    classDef backend fill:#33cccc,stroke:#006666,stroke-width:3px,color:#fff
+    classDef frontend fill:#ff6699,stroke:#cc3366,stroke-width:3px,color:#fff
+    
+    class YF,NEWS,ST,UP,MACRO dataSource
+    class RAW,PROC storage
+    class TA,EMB,SENT,NORM,SPLIT processing
+    class LSTM,GRU,TRANS,FINBERT,GROWTH,BASELINE model
+    class MLFLOW,OPTUNA,CKPT mlops
+    class API,REDIS,PG,MONGO backend
+    class NEXT frontend
 ```
+
+### Architecture Highlights
+
+- **📊 Multi-Modal Data Integration**: Combines price data, news, social sentiment, and macroeconomic indicators
+- **🔄 Comprehensive Feature Engineering**: 60-day windowing with technical indicators and FinBERT embeddings
+- **🧠 State-of-the-Art Models**: LSTM, GRU, and Transformer (PatchTST) for time-series forecasting
+- **🎯 MLOps Pipeline**: Automated experiment tracking (MLflow) and hyperparameter optimization (Optuna)
+- **⚡ High-Performance Backend**: Async FastAPI with Redis caching and dual database architecture
+- **📈 Real-Time Capabilities**: WebSocket integration for live market data streaming
+- **💻 Modern Frontend**: Next.js dashboard with interactive visualizations
 
 ---
 
@@ -157,8 +252,13 @@ test/
 │   ├── processed/         # Processed, feature-engineered data
 │   └── external/          # External reference data
 ├── models/                 # ML model implementations
-│   ├── checkpoints/       # Saved model weights
-│   └── configs/           # Model configurations
+│   ├── base_forecaster.py # Abstract base class for forecasting models
+│   ├── lstm_forecaster.py # LSTM model implementation
+│   ├── gru_forecaster.py  # GRU model implementation
+│   ├── transformer_forecaster.py # Transformer (PatchTST) implementation
+│   ├── model_config.py    # Model configuration dataclasses
+│   ├── checkpoints/       # Saved model weights (.pth files)
+│   └── configs/           # Model configurations (JSON)
 ├── scripts/                # Data ingestion scripts
 │   ├── fetch_historical_prices.py   # Historical OHLCV data (yfinance)
 │   ├── fetch_fundamentals.py        # Company fundamentals (Yahoo Finance / Alpha Vantage)
@@ -278,7 +378,7 @@ npm run dev
 
 ## Usage
 
-> **📌 Current Implementation Status**: The project is now in **Phase 2: Feature Engineering**. Phase 1 ingestion pipelines remain available, and new scripts for technical indicators, windowed sequences, and FinBERT embeddings have been added. ML model training and full API endpoints remain in the queue for upcoming phases. See the [Data Pipeline](#data-pipeline) and [Feature Engineering](#feature-engineering) sections for quick-start examples.
+> **📌 Current Implementation Status**: The project is now in **Phase 3: Time-Series Forecasting Models**. Phase 1 ingestion pipelines and Phase 2 feature engineering are complete. LSTM, GRU, and Transformer models have been implemented with MLflow experiment tracking and Optuna hyperparameter tuning. See the [Model Training](#model-training) section for quick-start examples or review the comprehensive [evaluation notebook](notebooks/forecasting_evaluation.ipynb).
 
 ### API Documentation
 
@@ -301,6 +401,17 @@ Access the Next.js dashboard at http://localhost:3000 for:
 Monitor experiments, compare models, and manage model registry:
 
 **MLflow UI**: http://localhost:5000
+
+```bash
+# View MLflow experiments locally
+mlflow ui --backend-store-uri ./mlruns
+```
+
+Track experiments for:
+- Model training runs (hyperparameters, metrics, model artifacts)
+- Hyperparameter tuning trials (Optuna integration)
+- Model comparison and selection
+- Checkpoint versioning and metadata
 
 ---
 
@@ -405,23 +516,76 @@ Outputs: `embeddings_news.npy`, `embeddings_social.npy`, and their metadata file
 
 ## Model Training
 
-> **⚠️ Note**: The following model training scripts are **planned** and not yet implemented. They will be created in Phase 2 of the development roadmap.
+Phase 3 introduces production-ready time-series forecasting models with comprehensive training infrastructure.
 
-### Time-Series Forecasting (Planned)
+### Quick Start
 
 ```bash
 # Train LSTM model
-python scripts/train_forecasting_models.py --model lstm --epochs 100 --batch-size 32
+python scripts/train_forecasting_models.py --model-type lstm --ticker RELIANCE.NS --max-epochs 100
 
 # Train GRU model
-python scripts/train_forecasting_models.py --model gru --epochs 100 --batch-size 32
+python scripts/train_forecasting_models.py --model-type gru --ticker RELIANCE.NS --max-epochs 50
 
-# Train Transformer model
-python scripts/train_forecasting_models.py --model transformer --epochs 50 --batch-size 16
+# Train Transformer model with hyperparameter tuning
+python scripts/train_forecasting_models.py --model-type transformer --ticker RELIANCE.NS --tune --num-trials 50
 
-# Hyperparameter optimization with Optuna
-python scripts/optimize_hyperparams.py --model lstm --trials 100
+# Evaluate models
+jupyter notebook notebooks/forecasting_evaluation.ipynb
 ```
+
+### Forecasting Models
+
+Three model architectures for multi-step (7-day) stock price forecasting:
+
+#### LSTM Forecaster
+- **Architecture**: 2-layer LSTM with 128 hidden units per layer
+- **Dropout**: 0.2 for regularization
+- **Parameters**: ~100k-150k (input_dim dependent)
+- **Best for**: Capturing long-term dependencies in sequential data
+- **Config**: `models/configs/lstm_default.json`
+
+#### GRU Forecaster
+- **Architecture**: 2-layer GRU with 128 hidden units per layer
+- **Dropout**: 0.2 for regularization
+- **Parameters**: ~75k-120k (fewer than LSTM, faster training)
+- **Best for**: Comparable performance to LSTM with reduced complexity
+- **Config**: `models/configs/gru_default.json`
+
+#### Transformer Forecaster (PatchTST)
+- **Architecture**: Patch-based Transformer with multi-head self-attention
+- **Parameters**: d_model=128, nhead=4, num_layers=2, patch_len=12
+- **Best for**: Capturing long-range dependencies beyond RNN limitations
+- **Config**: `models/configs/transformer_default.json`
+
+All models reference `models/base_forecaster.py` for consistent API (checkpointing, parameter counting, inference).
+
+### Training Features
+
+- **MLflow Tracking**: Automatic logging of hyperparameters, metrics (train_loss, val_loss, val_mae), and model artifacts
+- **Optuna Tuning**: Bayesian optimization over hidden_dim (64-256), num_layers (1-3), dropout (0.1-0.5), learning_rate (1e-4 to 1e-2)
+- **Early Stopping**: Patience of 10 epochs on validation loss
+- **Learning Rate Scheduling**: ReduceLROnPlateau with factor=0.5, patience=5
+- **Gradient Clipping**: max_norm=1.0 to prevent exploding gradients
+- **Reproducibility**: Seeded random number generators for PyTorch, NumPy, Python
+
+### Evaluation Metrics
+
+Per `docs/metrics_and_evaluation.md` Section 1.1 targets:
+- **MAE reduction**: ≥15% vs ARIMA baseline
+- **Directional Accuracy**: ≥55% (1-day), ≥53% (3-day), ≥52% (7-day)
+- **RMSE reduction**: ≥12%
+- **Sharpe ratio**: ≥1.0 (trading simulation)
+- **Inference latency**: ≤300ms p95
+
+Evaluate using `notebooks/forecasting_evaluation.ipynb` which includes:
+- Metrics computation (MAE, RMSE, MAPE, DA)
+- Baseline comparisons (ARIMA, Moving Average, Exponential Smoothing)
+- Statistical significance tests (paired t-test, binomial test)
+- Visualizations (predictions vs actuals, error distributions)
+- Trading backtests (Sharpe, Maximum Drawdown, cumulative returns)
+
+For detailed usage, see [scripts/README.md](scripts/README.md#phase-3-model-training).
 
 ### Sentiment Analysis (Planned)
 
@@ -459,9 +623,20 @@ pytest -m unit          # Unit tests only
 pytest -m integration   # Integration tests only
 pytest -m slow          # Slow tests only
 
+# Run Phase 3 model tests
+pytest tests/unit/test_metrics.py -v
+pytest tests/unit/test_models.py -v
+pytest tests/unit/test_dataset.py -v
+
 # View coverage report
 open htmlcov/index.html
 ```
+
+### Phase 3 Test Coverage
+
+- `tests/unit/test_metrics.py`: Evaluation metrics (MAE, RMSE, MAPE, Directional Accuracy, Sharpe, MDD)
+- `tests/unit/test_models.py`: Model architectures (LSTM, GRU, Transformer), checkpointing, config validation
+- `tests/unit/test_dataset.py`: Dataset loading, validation, DataLoader creation, leakage prevention
 
 ---
 
@@ -558,9 +733,30 @@ Refer to [docs/metrics_and_evaluation.md](docs/metrics_and_evaluation.md) for de
 - 📅 Feature engineering pipeline
 - 📅 Data validation and quality checks
 
-### Phase 2: Model Development 📅
-- LSTM/GRU/Transformer implementation
-- FinBERT fine-tuning
+### Phase 2: Feature Engineering ✅
+- ✅ Technical indicators (RSI, MACD, EMA, BB, ATR via pandas-ta)
+- ✅ Temporal train/val/test splits (60/20/20, chronological ordering)
+- ✅ Windowed sequence generation (60-day lookback)
+- ✅ Scaler fitting and persistence (MinMaxScaler/StandardScaler)
+- ✅ FinBERT text embeddings (news and social sentiment)
+- ✅ Data leakage prevention per docs Section 4.3/4.4
+
+### Phase 3: Time-Series Forecasting Models ✅
+- ✅ LSTM Forecaster (2-layer, 128 hidden units)
+- ✅ GRU Forecaster (2-layer, 128 hidden units)
+- ✅ Transformer Forecaster (PatchTST architecture)
+- ✅ Unified training script with MLflow tracking
+- ✅ Optuna hyperparameter tuning (50 trials, Bayesian optimization)
+- ✅ Model checkpointing with metadata
+- ✅ Evaluation metrics (MAE, RMSE, Directional Accuracy, Sharpe)
+- ✅ Baseline models (ARIMA, Moving Average, Exponential Smoothing)
+- ✅ Comprehensive evaluation notebook
+- ✅ Unit tests for models, metrics, dataset
+
+### Phase 4: FinBERT Sentiment Analysis 📅
+- FinBERT fine-tuning on financial news
+- Sentiment classification pipeline
+- Multi-modal feature fusion
 - Growth scoring algorithm
 - Model evaluation and selection
 

@@ -552,3 +552,154 @@ data/processed/RELIANCE_NS/2025-11-18/
 - **Missing indicator columns**: Verify `.env` `TECHNICAL_INDICATORS=RSI,MACD,EMA,BB,ATR` (comma-separated, not JSON) and that pandas-ta is installed.
 
 See `docs/metrics_and_evaluation.md` for the leakage rules, split ratios, and sentiment accuracy targets these scripts satisfy.
+
+## Phase 3: Model Training
+
+Phase 3 introduces the unified training script for LSTM, GRU, and Transformer forecasting models with MLflow experiment tracking and Optuna hyperparameter tuning.
+
+### `train_forecasting_models.py`
+
+Trains time-series forecasting models on preprocessed data from Phase 2, with support for:
+- Three model architectures (LSTM, GRU, Transformer/PatchTST)
+- MLflow experiment tracking (hyperparameters, metrics, artifacts)
+- Optuna Bayesian hyperparameter optimization
+- Early stopping and model checkpointing
+- Reproducible training via seeding
+
+**Purpose**: Train deep learning models for multi-step stock price forecasting aligned with `docs/metrics_and_evaluation.md` targets (MAE reduction ≥15%, Directional Accuracy ≥55%, Sharpe ≥1.0).
+
+#### Usage Examples
+
+**Basic training:**
+```bash
+python scripts/train_forecasting_models.py \
+  --model-type lstm \
+  --ticker RELIANCE.NS \
+  --max-epochs 100
+```
+
+**With hyperparameter tuning:**
+```bash
+python scripts/train_forecasting_models.py \
+  --model-type transformer \
+  --ticker RELIANCE.NS \
+  --tune \
+  --num-trials 50
+```
+
+**Using custom configuration:**
+```bash
+python scripts/train_forecasting_models.py \
+  --model-type gru \
+  --ticker RELIANCE.NS \
+  --config-file models/configs/gru_custom.json
+```
+
+**With specific device and seed:**
+```bash
+python scripts/train_forecasting_models.py \
+  --model-type lstm \
+  --ticker RELIANCE.NS \
+  --device cuda \
+  --seed 42 \
+  --batch-size 64
+```
+
+#### CLI Arguments
+
+- `--model-type {lstm,gru,transformer}` - Model architecture (required)
+- `--ticker TICKER` - Ticker symbol, e.g., RELIANCE.NS (required)
+- `--data-dir DATA_DIR` - Base processed data directory (default: `data/processed`)
+- `--config-file PATH` - JSON config file overriding defaults
+- `--max-epochs N` - Maximum training epochs (default: 100)
+- `--batch-size N` - Training batch size (default: 32)
+- `--learning-rate LR` - Learning rate (default: 0.001)
+- `--tune` - Enable Optuna hyperparameter tuning
+- `--num-trials N` - Number of Optuna trials (default: 50)
+- `--device {cpu,cuda,auto}` - Device for training (default: auto)
+- `--seed N` - Random seed for reproducibility (default: 42)
+- `--checkpoint-dir DIR` - Checkpoint save directory (default: `models/checkpoints`)
+- `--experiment-name NAME` - MLflow experiment name (default: `forecasting_phase3`)
+
+#### Outputs
+
+**Checkpoints:**
+Saved to `models/checkpoints/<model_type>_<ticker>_<timestamp>.pth` with accompanying `.json` metadata containing:
+- Training hyperparameters (hidden_dim, num_layers, dropout, etc.)
+- Training history (train_loss, val_loss, val_mae per epoch)
+- Best epoch and validation metrics
+- Split information and ticker details
+
+**MLflow Runs:**
+Logged to `MLFLOW_TRACKING_URI` (from `.env`) with:
+- Parameters: model_type, ticker, seed, all hyperparameters
+- Metrics: train_loss, val_loss, val_mae, learning_rate (per epoch)
+- Artifacts: Best model checkpoint
+
+**Training Logs:**
+Standard output and `logs/app.log` with structured logging of:
+- Model parameter count
+- Per-epoch training progress (with tqdm progress bars)
+- Early stopping triggers
+- Checkpoint save notifications
+
+#### Requirements
+
+- **Phase 2 completion**: Processed data must exist in `data/processed/<TICKER>/`
+- **Dependencies**: PyTorch ≥2.1.0, MLflow ≥2.8.0, Optuna ≥3.4.0 (see `requirements.txt`)
+- **MLflow server** (optional): Defaults to local file storage if tracking URI not configured
+- **CUDA** (optional): Training auto-detects GPU availability; falls back to CPU
+
+#### Troubleshooting
+
+**CUDA out of memory:**
+```
+RuntimeError: CUDA out of memory
+```
+**Solution:** Reduce batch size or use CPU:
+```bash
+python scripts/train_forecasting_models.py --model-type lstm --ticker RELIANCE.NS --batch-size 16 --device cpu
+```
+
+**Missing processed data:**
+```
+FileNotFoundError: No processed data found for ticker RELIANCE.NS
+```
+**Solution:** Run feature engineering first:
+```bash
+python scripts/feature_engineering.py --ticker RELIANCE.NS
+```
+
+**MLflow connection errors:**
+```
+MlflowException: Failed to connect to tracking URI
+```
+**Solution:** Check `MLFLOW_TRACKING_URI` in `.env` or disable MLflow by uninstalling it (script will warn and continue without tracking).
+
+**Optuna import error:**
+```
+ImportError: Optuna not available
+```
+**Solution:** Don't use `--tune` flag, or install Optuna:
+```bash
+pip install optuna>=3.4.0
+```
+
+**Invalid hyperparameters:**
+```
+ValueError: patch_len (13) must divide lookback_window (60)
+```
+**Solution:** For Transformer, use valid patch lengths: 6, 10, 12, 15, 20, or 30.
+
+#### Evaluation
+
+After training, use `notebooks/forecasting_evaluation.ipynb` to:
+- Load trained models and generate predictions
+- Compute MAE, RMSE, MAPE, Directional Accuracy metrics
+- Compare against ARIMA/MA/ES baselines
+- Perform statistical significance tests (paired t-test, binomial test)
+- Measure inference latency (target: ≤300ms p95)
+- Run trading simulations (target: Sharpe ≥1.0)
+
+See `docs/metrics_and_evaluation.md` for evaluation criteria and success thresholds.
+

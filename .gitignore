@@ -112,14 +112,29 @@ data/raw/macro/*
 !data/raw/macro/.gitkeep
 
 # Model Checkpoints & Artifacts
-models/checkpoints/*
-models/configs/*
+# Exclude trained weights and checkpoint metadata
+models/checkpoints/*.pth
+models/checkpoints/*.json
 !models/checkpoints/.gitkeep
+
+# Keep default model configs but exclude custom/tuned configs
+models/configs/*
 !models/configs/.gitkeep
+!models/configs/*_default.json
 
 # MLflow Tracking
 mlruns/
 mlartifacts/
+
+# Optuna Study Database
+optuna.db
+*.db-journal
+
+# Jupyter Notebook Checkpoints
+*.ipynb_checkpoints/
+
+# Training Logs (beyond regular logs/)
+logs/*.log
 
 # ============================================================
 # Logs
