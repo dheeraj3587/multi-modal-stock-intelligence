@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package com.upstox.marketdatafeeder.rpc.proto;
+
+message FeedResponse {
+    Type type = 1;
+    map<string, Feed> feeds = 2;
+}
+
+enum Type {
+    initial_feed = 0;
+    live_feed = 1;
+}
+
+message Feed {
+    LTPC ltpc = 1;
+    FullFeed full_feed = 2;
+    OptionChain option_chain = 3;
+}
+
+message LTPC {
+    double ltp = 1;
+    int64 ltt = 2;
+    double close = 3;
+}
+
+message FullFeed {
+    LTPC ltpc = 1;
+    MarketLevel market_level = 2;
+    OHLC ohlc = 3;
+    int64 last_close = 4;
+    int64 open_interest = 5;
+    int64 volume = 6;
+    int64 total_buy_quantity = 7;
+    int64 total_sell_quantity = 8;
+}
+
+message MarketLevel {
+    repeated Quote bid_asks = 1;
+}
+
+message Quote {
+    int64 quantity = 1;
+    double price = 2;
+    int64 orders = 3;
+}
+
+message OHLC {
+    double open = 1;
+    double high = 2;
+    double low = 3;
+    double close = 4;
+    int64 ts = 5;
+}
+
+message OptionChain {
+    LTPC ltpc = 1;
+    double bid_price = 2;
+    double ask_price = 3;
+    int64 bid_qty = 4;
+    int64 ask_qty = 5;
+    double implied_volatility = 6;
+    int64 open_interest = 7;
+}
