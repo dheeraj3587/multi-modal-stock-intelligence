@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Navbar from './Navbar/Navbar';
 import StockActionPanel from './StockActionPanel/StockActionPanel';
@@ -28,12 +29,20 @@ interface StockDashboardProps {
 }
 
 const StockDashboard: React.FC<StockDashboardProps> = ({ initialStock }) => {
+    const navigate = useNavigate();
     const [activeNav, setActiveNav] = useState('dashboard');
     const [stocks, setStocks] = useState<StockData[]>([]);
     const [leaderboard, setLeaderboard] = useState<LeaderboardStock[]>([]);
     const [selectedStock, setSelectedStock] = useState<StockData | null>(null);
     const [isConnected, setIsConnected] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+
+    // Handle analyze stock button
+    const handleAnalyze = useCallback(() => {
+        if (selectedStock) {
+            navigate(`/stock/${selectedStock.symbol}`);
+        }
+    }, [selectedStock, navigate]);
 
     // Check for existing token
     useEffect(() => {
@@ -200,6 +209,7 @@ const StockDashboard: React.FC<StockDashboardProps> = ({ initialStock }) => {
                             stocks={stocks}
                             selectedStock={currentStock}
                             onStockSelect={handleStockSelect}
+                            onAnalyze={handleAnalyze}
                         />
                     </motion.aside>
 

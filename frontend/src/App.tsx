@@ -10,6 +10,7 @@ import SentimentPanel from './components/SentimentPanel/SentimentPanel';
 import AuthCallback from './components/Auth/AuthCallback';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
 import StockDashboard from './components/StockDashboard';
+import StockDetail from './components/StockDetail/StockDetail';
 import { AuthProvider } from './contexts/AuthContext';
 import { upstoxService } from './services/upstoxService';
 import { Time } from 'lightweight-charts';
@@ -316,6 +317,11 @@ function App() {
                     <Route path="/" element={
                         <ProtectedRoute>
                             <StockDashboard />
+                        </ProtectedRoute>
+                    } />
+                    <Route path="/stock/:symbol" element={
+                        <ProtectedRoute>
+                            <StockDetail />
                         </ProtectedRoute>
                     } />
                     <Route path="/trading" element={

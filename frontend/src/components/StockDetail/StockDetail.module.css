@@ -1,0 +1,552 @@
+.container {
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+    color: var(--text-primary);
+}
+
+.header {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border-primary);
+}
+
+.backButton {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.backButton:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--border-secondary);
+}
+
+.headerContent {
+    flex: 1;
+}
+
+.title {
+    font-size: 32px;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+    color: var(--text-primary);
+}
+
+.symbol {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* Grid Layout */
+.gridContainer {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+/* Price Card */
+.priceCard {
+    background: var(--bg-card);
+    border: 1px solid var(--border-glass);
+    border-radius: 12px;
+    padding: 20px;
+    grid-column: span 1;
+}
+
+.priceHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.priceHeader h2 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.priceChange {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.priceChange.gain {
+    color: var(--color-buy);
+    background: var(--color-buy-bg);
+}
+
+.priceChange.loss {
+    color: var(--color-sell);
+    background: var(--color-sell-bg);
+}
+
+.price {
+    font-size: 40px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* Recommendation Card */
+.recommendationCard {
+    background: var(--bg-card);
+    border: 2px solid;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.recommendationCard.buy {
+    border-color: var(--color-buy);
+    background: linear-gradient(135deg, var(--bg-card), var(--color-buy-bg));
+}
+
+.recommendationCard.sell {
+    border-color: var(--color-sell);
+    background: linear-gradient(135deg, var(--bg-card), var(--color-sell-bg));
+}
+
+.recommendationCard.hold {
+    border-color: var(--accent-green-muted);
+    background: var(--bg-card);
+}
+
+.recommendationLabel {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+}
+
+.recommendationValue {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.recommendationCard.buy .recommendationValue {
+    color: var(--color-buy);
+}
+
+.recommendationCard.sell .recommendationValue {
+    color: var(--color-sell);
+}
+
+.recommendationCard.hold .recommendationValue {
+    color: var(--accent-green);
+}
+
+.confidence {
+    font-size: 13px;
+    color: var(--text-tertiary);
+}
+
+/* Generic Card */
+.card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-glass);
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.cardTitle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 16px 0;
+    color: var(--text-primary);
+}
+
+.cardTitle svg {
+    color: var(--accent-green);
+    flex-shrink: 0;
+}
+
+/* Sentiment Card */
+.sentimentCard {
+    grid-column: span 1;
+}
+
+.sentimentBadge {
+    display: inline-block;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    letter-spacing: 0.05em;
+}
+
+.sentimentBadge.bullish {
+    background: var(--color-buy-bg);
+    color: var(--color-buy);
+}
+
+.sentimentBadge.bearish {
+    background: var(--color-sell-bg);
+    color: var(--color-sell);
+}
+
+.sentimentBadge.neutral {
+    background: rgba(165, 165, 165, 0.1);
+    color: var(--text-secondary);
+}
+
+.sentimentScore {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 12px;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.sentimentScore .confidence {
+    font-size: 12px;
+    color: var(--text-tertiary);
+}
+
+.reasoning {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-style: italic;
+    margin: 0;
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+    border-left: 3px solid var(--accent-green);
+}
+
+/* Risk Card */
+.riskCard {
+    grid-column: span 1;
+}
+
+.riskBadge {
+    display: inline-block;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    letter-spacing: 0.05em;
+}
+
+.riskBadge.low {
+    background: var(--color-buy-bg);
+    color: var(--color-buy);
+}
+
+.riskBadge.high {
+    background: var(--color-sell-bg);
+    color: var(--color-sell);
+}
+
+.riskBadge.medium {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+}
+
+.riskFactors {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.factLabel {
+    margin: 0 0 8px 0;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.riskFactors ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.riskFactors li {
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.noRisks {
+    color: var(--color-buy);
+    font-weight: 500;
+    margin: 0;
+    padding: 8px;
+    background: var(--color-buy-bg);
+    border-radius: 6px;
+    text-align: center;
+}
+
+/* Forecast Card */
+.forecastCard {
+    grid-column: span 2;
+}
+
+@media (max-width: 1024px) {
+    .forecastCard {
+        grid-column: span 1;
+    }
+}
+
+.forecastRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.forecastItem {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+}
+
+.label {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+}
+
+.value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.priceTarget {
+    margin-bottom: 20px;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--bg-tertiary), var(--accent-green-bg));
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+}
+
+.targetPrice {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.targetPrice .label {
+    display: block;
+}
+
+.targetPrice .value {
+    font-size: 28px;
+}
+
+.upside {
+    display: block;
+    font-size: 13px;
+    color: var(--color-buy);
+    font-weight: 600;
+    margin-top: 4px;
+}
+
+.outlookRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.outlookItem {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+}
+
+.outlook {
+    font-size: 14px;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: inline-block;
+    text-align: center;
+    width: fit-content;
+}
+
+.outlook.bullish {
+    background: var(--color-buy-bg);
+    color: var(--color-buy);
+}
+
+.outlook.bearish {
+    background: var(--color-sell-bg);
+    color: var(--color-sell);
+}
+
+.outlook.neutral {
+    background: rgba(165, 165, 165, 0.1);
+    color: var(--text-secondary);
+}
+
+/* News Card */
+.newsCard {
+    grid-column: span 2;
+}
+
+@media (max-width: 1024px) {
+    .newsCard {
+        grid-column: span 1;
+    }
+}
+
+.newsList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.newsItem {
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    border-left: 3px solid var(--border-primary);
+}
+
+.newsHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.newsTitle {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    line-height: 1.4;
+    flex: 1;
+}
+
+.newsSentiment {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.newsSentiment.bullish {
+    background: var(--color-buy-bg);
+    color: var(--color-buy);
+}
+
+.newsSentiment.bearish {
+    background: var(--color-sell-bg);
+    color: var(--color-sell);
+}
+
+.newsSentiment.neutral {
+    background: rgba(165, 165, 165, 0.1);
+    color: var(--text-secondary);
+}
+
+.newsSource {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    margin: 0;
+}
+
+/* Loading & Error States */
+.loading,
+.error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    font-size: 16px;
+    color: var(--text-secondary);
+}
+
+.error {
+    flex-direction: column;
+    gap: 16px;
+}
+
+.error svg {
+    color: var(--color-sell);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .container {
+        padding: 16px;
+    }
+
+    .header {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .title {
+        font-size: 24px;
+    }
+
+    .gridContainer {
+        grid-template-columns: 1fr;
+    }
+
+    .price {
+        font-size: 32px;
+    }
+
+    .forecastCard,
+    .newsCard {
+        grid-column: span 1;
+    }
+
+    .forecastRow,
+    .outlookRow {
+        grid-template-columns: 1fr;
+    }
+}

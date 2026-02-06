@@ -48,12 +48,9 @@ class Config:
     
     # API Keys
     @property
-    def newsapi_key(self) -> str:
-        """NewsAPI key for news data fetching."""
-        key = os.getenv("NEWSAPI_KEY", "")
-        if not key:
-            raise ConfigError("NEWSAPI_KEY not found in environment variables. Please set it in .env file.")
-        return key
+    def newsapi_key(self) -> Optional[str]:
+        """NewsAPI key for news data fetching (optional, will use RSS fallback if not set)."""
+        return os.getenv("NEWSAPI_KEY", "")
     
     @property
     def alpha_vantage_key(self) -> Optional[str]:
@@ -61,12 +58,9 @@ class Config:
         return os.getenv("ALPHA_VANTAGE_KEY", "")
     
     @property
-    def stocktwits_access_token(self) -> str:
-        """StockTwits access token for social sentiment data."""
-        token = os.getenv("STOCKTWITS_ACCESS_TOKEN", "")
-        if not token:
-            raise ConfigError("STOCKTWITS_ACCESS_TOKEN not found in environment variables. Please set it in .env file.")
-        return token
+    def stocktwits_access_token(self) -> Optional[str]:
+        """StockTwits access token for social sentiment data (optional, will use fallback if not set)."""
+        return os.getenv("STOCKTWITS_ACCESS_TOKEN", "")
     
     @property
     def world_bank_api_key(self) -> Optional[str]:
