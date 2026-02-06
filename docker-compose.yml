@@ -1,140 +1,26 @@
 version: '3.8'
 
 services:
-  # FastAPI Backend Service
   backend:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: backend/Dockerfile
     container_name: stock-intelligence-backend
-    ports:
-      - "8000:8000"
     env_file:
       - .env
+    ports:
+      - "8000:8000"
     volumes:
-      - ./backend:/app/backend  # Mount code for hot-reload in development
-      - ./data:/app/data  # Mount data directory
-      - ./models:/app/models  # Mount models directory
-      - ./logs:/app/logs  # Mount logs directory
-    depends_on:
-      postgres:
-        condition: service_healthy
-      mongodb:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - ./backend:/app/backend
     restart: unless-stopped
-    networks:
-      - stock-intelligence-network
 
-  # Next.js Frontend Service
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: stock-intelligence-frontend
     ports:
-      - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://backend:8000
-      - NEXT_PUBLIC_WS_URL=ws://backend:8000
-    volumes:
-      - ./frontend:/app  # Mount code for hot-reload
-      - /app/node_modules  # Anonymous volume for node_modules
-      - /app/.next  # Anonymous volume for build artifacts
+      - "5173:80"
     depends_on:
       - backend
     restart: unless-stopped
-    networks:
-      - stock-intelligence-network
-
-  # PostgreSQL Database
-  postgres:
-    image: postgres:15-alpine
-    container_name: stock-intelligence-postgres
-    environment:
-      - POSTGRES_DB=${POSTGRES_DB:-stock_intelligence}
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    restart: unless-stopped
-    networks:
-      - stock-intelligence-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # MongoDB Database
-  mongodb:
-    image: mongo:7.0
-    container_name: stock-intelligence-mongodb
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME:-admin}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD:-admin}
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb-data:/data/db
-    restart: unless-stopped
-    networks:
-      - stock-intelligence-network
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Redis Cache
-  redis:
-    image: redis:7-alpine
-    container_name: stock-intelligence-redis
-    command: redis-server --appendonly yes
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
-    restart: unless-stopped
-    networks:
-      - stock-intelligence-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # MLflow Tracking Server (optional)
-  mlflow:
-    image: ghcr.io/mlflow/mlflow:latest
-    container_name: stock-intelligence-mlflow
-    ports:
-      - "5000:5000"
-    command: >
-      mlflow server
-      --host 0.0.0.0
-      --port 5000
-      --backend-store-uri sqlite:///mlflow/mlflow.db
-      --default-artifact-root /mlflow/mlruns
-    volumes:
-      - ./mlruns:/mlflow/mlruns
-      - mlflow-data:/mlflow
-    restart: unless-stopped
-    networks:
-      - stock-intelligence-network
-
-# Networks
-networks:
-  stock-intelligence-network:
-    driver: bridge
-
-# Persistent Volumes
-volumes:
-  postgres-data:
-  mongodb-data:
-  redis-data:
-  mlflow-data:
-

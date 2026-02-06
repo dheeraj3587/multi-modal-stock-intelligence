@@ -1,12 +1,18 @@
 """
 Multi-Modal Stock Intelligence Platform - FastAPI Main Application
 """
+# Load environment variables FIRST before any other imports
+from dotenv import load_dotenv
+load_dotenv()
+
 import os
 from datetime import datetime
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Initialize FastAPI application
+from backend.api import auth, news, market
+
 app = FastAPI(
     title="Multi-Modal Stock Intelligence Platform",
     description="AI-driven stock intelligence system with time-series forecasting, sentiment analysis, and live market data",
@@ -14,6 +20,10 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+app.include_router(auth.router)
+app.include_router(news.router)
+app.include_router(market.router)
 
 # CORS Configuration
 CORS_ORIGINS = os.getenv("BACKEND_CORS_ORIGINS", '["http://localhost:3000"]')

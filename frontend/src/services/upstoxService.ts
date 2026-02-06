@@ -12,6 +12,14 @@ export class UpstoxService {
 
     constructor() {
         this.loadProto();
+        const storedToken = localStorage.getItem('upstox_access_token');
+        if (storedToken) {
+            this.accessToken = storedToken;
+        }
+    }
+
+    setAccessToken(token: string) {
+        this.accessToken = token;
     }
 
     private async loadProto() {
@@ -173,6 +181,19 @@ export class UpstoxService {
         } catch (error) {
             console.error('Failed to fetch historical candles:', error);
             return [];
+        }
+    }
+
+    async getSentiment(symbol: string): Promise<{ overall_sentiment: number, news: any[] }> {
+        const url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/news/${symbol}`;
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Failed to fetch sentiment');
+            return await response.json();
+        } catch (error) {
+            console.error('Sentiment fetch error:', error);
+            // mocked fallback for demo if backend fails
+            return { overall_sentiment: 0.5, news: [] };
         }
     }
 }

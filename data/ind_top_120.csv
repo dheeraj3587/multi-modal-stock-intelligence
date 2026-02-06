@@ -1,0 +1,121 @@
+symbol,company_name,sector,approx_market_cap,source_rank,source_url
+RELIANCE.NS,Reliance Industries Limited,Energy,₹19.52T,1,https://finance.yahoo.com/quote/RELIANCE.NS
+HDFCBANK.NS,HDFC Bank Limited,Financial Services,₹14.47T,2,https://finance.yahoo.com/quote/HDFCBANK.NS
+BHARTIARTL.NS,Bharti Airtel Limited,Communication Services,₹12.37T,3,https://finance.yahoo.com/quote/BHARTIARTL.NS
+TCS.NS,Tata Consultancy Services Limited,Technology,₹10.62T,4,https://finance.yahoo.com/quote/TCS.NS
+ICICIBANK.NS,ICICI Bank Limited,Financial Services,₹9.98T,5,https://finance.yahoo.com/quote/ICICIBANK.NS
+SBIN.NS,State Bank of India,Financial Services,₹9.77T,6,https://finance.yahoo.com/quote/SBIN.NS
+BAJFINANCE.NS,Bajaj Finance Limited,Financial Services,₹6.11T,7,https://finance.yahoo.com/quote/BAJFINANCE.NS
+INFY.NS,Infosys Limited,Technology,₹6.08T,8,https://finance.yahoo.com/quote/INFY.NS
+LICI.NS,Life Insurance Corporation of India,Financial Services,₹5.68T,9,https://finance.yahoo.com/quote/LICI.NS
+HINDUNILVR.NS,Hindustan Unilever Limited,Consumer Defensive,₹5.58T,10,https://finance.yahoo.com/quote/HINDUNILVR.NS
+LT.NS,Larsen & Toubro Limited,Industrials,₹5.58T,11,https://finance.yahoo.com/quote/LT.NS
+MARUTI.NS,Maruti Suzuki India Limited,Consumer Cyclical,₹4.73T,12,https://finance.yahoo.com/quote/MARUTI.NS
+HCLTECH.NS,HCL Technologies Limited,Technology,₹4.30T,13,https://finance.yahoo.com/quote/HCLTECH.NS
+M&M.NS,Mahindra & Mahindra Limited,Consumer Cyclical,₹4.28T,14,https://finance.yahoo.com/quote/M&M.NS
+KOTAKBANK.NS,Kotak Mahindra Bank Limited,Financial Services,₹4.21T,15,https://finance.yahoo.com/quote/KOTAKBANK.NS
+AXISBANK.NS,Axis Bank Limited,Financial Services,₹4.16T,16,https://finance.yahoo.com/quote/AXISBANK.NS
+SUNPHARMA.NS,Sun Pharmaceutical Industries Limited,Healthcare,₹4.07T,17,https://finance.yahoo.com/quote/SUNPHARMA.NS
+ITC.NS,ITC Limited,Consumer Defensive,₹4.06T,18,https://finance.yahoo.com/quote/ITC.NS
+ULTRACEMCO.NS,UltraTech Cement Limited,Basic Materials,₹3.73T,19,https://finance.yahoo.com/quote/ULTRACEMCO.NS
+TITAN.NS,Titan Company Limited,Consumer Cyclical,₹3.66T,20,https://finance.yahoo.com/quote/TITAN.NS
+ADANIPORTS.NS,Adani Ports and Special Economic Zone Limited,Industrials,₹3.55T,21,https://finance.yahoo.com/quote/ADANIPORTS.NS
+NTPC.NS,NTPC Limited,Utilities,₹3.52T,22,https://finance.yahoo.com/quote/NTPC.NS
+ONGC.NS,Oil and Natural Gas Corporation Limited,Energy,₹3.36T,23,https://finance.yahoo.com/quote/ONGC.NS
+BAJAJFINSV.NS,Bajaj Finserv Ltd.,Financial Services,₹3.21T,24,https://finance.yahoo.com/quote/BAJAJFINSV.NS
+BEL.NS,Bharat Electronics Limited,Industrials,₹3.14T,25,https://finance.yahoo.com/quote/BEL.NS
+JSWSTEEL.NS,JSW Steel Limited,Basic Materials,₹3.00T,26,https://finance.yahoo.com/quote/JSWSTEEL.NS
+ADANIPOWER.NS,Adani Power Limited,Utilities,₹2.96T,27,https://finance.yahoo.com/quote/ADANIPOWER.NS
+ADANIENT.NS,Adani Enterprises Limited,Energy,₹2.88T,28,https://finance.yahoo.com/quote/ADANIENT.NS
+POWERGRID.NS,Power Grid Corporation of India Limited,Utilities,₹2.71T,29,https://finance.yahoo.com/quote/POWERGRID.NS
+HAL.NS,Hindustan Aeronautics Limited,Industrials,₹2.71T,30,https://finance.yahoo.com/quote/HAL.NS
+BAJAJ-AUTO.NS,Bajaj Auto Limited,Consumer Cyclical,₹2.66T,31,https://finance.yahoo.com/quote/BAJAJ-AUTO.NS
+COALINDIA.NS,Coal India Limited,Energy,₹2.64T,32,https://finance.yahoo.com/quote/COALINDIA.NS
+VEDL.NS,Vedanta Limited,Basic Materials,₹2.61T,33,https://finance.yahoo.com/quote/VEDL.NS
+DMART.NS,Avenue Supermarts Limited,Consumer Defensive,₹2.51T,34,https://finance.yahoo.com/quote/DMART.NS
+NESTLEIND.NS,Nestlé India Limited,Consumer Defensive,₹2.49T,35,https://finance.yahoo.com/quote/NESTLEIND.NS
+IOC.NS,Indian Oil Corporation Limited,Energy,₹2.46T,36,https://finance.yahoo.com/quote/IOC.NS
+TATASTEEL.NS,Tata Steel Limited,Basic Materials,₹2.45T,37,https://finance.yahoo.com/quote/TATASTEEL.NS
+WIPRO.NS,Wipro Limited,Technology,₹2.41T,38,https://finance.yahoo.com/quote/WIPRO.NS
+ASIANPAINT.NS,Asian Paints Limited,Basic Materials,₹2.30T,39,https://finance.yahoo.com/quote/ASIANPAINT.NS
+HINDALCO.NS,Hindalco Industries Limited,Basic Materials,₹2.10T,40,https://finance.yahoo.com/quote/HINDALCO.NS
+SBILIFE.NS,SBI Life Insurance Company Limited,Financial Services,₹1.98T,41,https://finance.yahoo.com/quote/SBILIFE.NS
+EICHERMOT.NS,Eicher Motors Limited,Consumer Cyclical,₹1.97T,42,https://finance.yahoo.com/quote/EICHERMOT.NS
+GRASIM.NS,Grasim Industries Limited,Basic Materials,₹1.93T,43,https://finance.yahoo.com/quote/GRASIM.NS
+INDIGO.NS,InterGlobe Aviation Limited,Industrials,₹1.89T,44,https://finance.yahoo.com/quote/INDIGO.NS
+SHRIRAMFIN.NS,Shriram Finance Limited,Financial Services,₹1.86T,45,https://finance.yahoo.com/quote/SHRIRAMFIN.NS
+TVSMOTOR.NS,TVS Motor Company Limited,Consumer Cyclical,₹1.76T,46,https://finance.yahoo.com/quote/TVSMOTOR.NS
+JIOFIN.NS,Jio Financial Services Limited,Financial Services,₹1.71T,47,https://finance.yahoo.com/quote/JIOFIN.NS
+BPCL.NS,Bharat Petroleum Corporation Limited,Energy,₹1.67T,48,https://finance.yahoo.com/quote/BPCL.NS
+LTIM.NS,LTIMindtree Limited,Technology,₹1.64T,49,https://finance.yahoo.com/quote/LTIM.NS
+DLF.NS,DLF Limited,Real Estate,₹1.64T,50,https://finance.yahoo.com/quote/DLF.NS
+DIVISLAB.NS,Divi's Laboratories Limited,Healthcare,₹1.59T,51,https://finance.yahoo.com/quote/DIVISLAB.NS
+ADANIGREEN.NS,Adani Green Energy Limited,Utilities,₹1.58T,52,https://finance.yahoo.com/quote/ADANIGREEN.NS
+HDFCLIFE.NS,HDFC Life Insurance Company Limited,Financial Services,₹1.52T,53,https://finance.yahoo.com/quote/HDFCLIFE.NS
+PIDILITIND.NS,Pidilite Industries Limited,Basic Materials,₹1.51T,54,https://finance.yahoo.com/quote/PIDILITIND.NS
+VBL.NS,Varun Beverages Limited,Consumer Defensive,₹1.50T,55,https://finance.yahoo.com/quote/VBL.NS
+BANKBARODA.NS,Bank of Baroda Limited,Financial Services,₹1.48T,56,https://finance.yahoo.com/quote/BANKBARODA.NS
+IRFC.NS,Indian Railway Finance Corporation Limited,Financial Services,₹1.48T,57,https://finance.yahoo.com/quote/IRFC.NS
+CHOLAFIN.NS,Cholamandalam Investment and Finance Company Limited,Financial Services,₹1.46T,58,https://finance.yahoo.com/quote/CHOLAFIN.NS
+TRENT.NS,Trent Limited,Consumer Cyclical,₹1.46T,59,https://finance.yahoo.com/quote/TRENT.NS
+MUTHOOTFIN.NS,Muthoot Finance Limited,Financial Services,₹1.44T,60,https://finance.yahoo.com/quote/MUTHOOTFIN.NS
+TECHM.NS,Tech Mahindra Limited,Technology,₹1.43T,61,https://finance.yahoo.com/quote/TECHM.NS
+BRITANNIA.NS,Britannia Industries Limited,Consumer Defensive,₹1.41T,62,https://finance.yahoo.com/quote/BRITANNIA.NS
+PNB.NS,Punjab National Bank,Financial Services,₹1.41T,63,https://finance.yahoo.com/quote/PNB.NS
+PFC.NS,Power Finance Corporation Limited,Financial Services,₹1.37T,64,https://finance.yahoo.com/quote/PFC.NS
+UNIONBANK.NS,Union Bank of India,Financial Services,₹1.35T,65,https://finance.yahoo.com/quote/UNIONBANK.NS
+TORNTPHARM.NS,Torrent Pharmaceuticals Limited,Healthcare,₹1.33T,66,https://finance.yahoo.com/quote/TORNTPHARM.NS
+CANBK.NS,Canara Bank,Financial Services,₹1.32T,67,https://finance.yahoo.com/quote/CANBK.NS
+AMBUJACEM.NS,Ambuja Cements Limited,Basic Materials,₹1.30T,68,https://finance.yahoo.com/quote/AMBUJACEM.NS
+ABB.NS,ABB India Limited,Industrials,₹1.23T,69,https://finance.yahoo.com/quote/ABB.NS
+MOTHERSON.NS,Samvardhana Motherson International Limited,Consumer Cyclical,₹1.23T,70,https://finance.yahoo.com/quote/MOTHERSON.NS
+ADANIENSOL.NS,Adani Energy Solutions Limited,Utilities,₹1.22T,71,https://finance.yahoo.com/quote/ADANIENSOL.NS
+CUMMINSIND.NS,Cummins India Limited,Industrials,₹1.20T,72,https://finance.yahoo.com/quote/CUMMINSIND.NS
+GODREJCP.NS,Godrej Consumer Products Limited,Consumer Defensive,₹1.20T,73,https://finance.yahoo.com/quote/GODREJCP.NS
+IDEA.NS,Vodafone Idea Limited,Communication Services,₹1.20T,74,https://finance.yahoo.com/quote/IDEA.NS
+BAJAJHLDNG.NS,Bajaj Holdings & Investment Limited,Financial Services,₹1.20T,75,https://finance.yahoo.com/quote/BAJAJHLDNG.NS
+JINDALSTEL.NS,Jindal Steel Limited,Basic Materials,₹1.20T,76,https://finance.yahoo.com/quote/JINDALSTEL.NS
+ASHOKLEY.NS,Ashok Leyland Limited,Industrials,₹1.18T,77,https://finance.yahoo.com/quote/ASHOKLEY.NS
+SIEMENS.NS,Siemens Limited,Industrials,₹1.18T,78,https://finance.yahoo.com/quote/SIEMENS.NS
+INDUSTOWER.NS,Indus Towers Limited,Communication Services,₹1.16T,79,https://finance.yahoo.com/quote/INDUSTOWER.NS
+HDFCAMC.NS,HDFC Asset Management Company Limited,Financial Services,₹1.16T,80,https://finance.yahoo.com/quote/HDFCAMC.NS
+TATAPOWER.NS,Tata Power Company Limited,Utilities,₹1.16T,81,https://finance.yahoo.com/quote/TATAPOWER.NS
+HEROMOTOCO.NS,Hero MotoCorp Limited,Consumer Cyclical,₹1.15T,82,https://finance.yahoo.com/quote/HEROMOTOCO.NS
+POLYCAB.NS,Polycab India Limited,Industrials,₹1.15T,83,https://finance.yahoo.com/quote/POLYCAB.NS
+TATACONSUM.NS,Tata Consumer Products Limited,Consumer Defensive,₹1.14T,84,https://finance.yahoo.com/quote/TATACONSUM.NS
+CIPLA.NS,Cipla Limited,Healthcare,₹1.07T,85,https://finance.yahoo.com/quote/CIPLA.NS
+BOSCHLTD.NS,Bosch Limited,Consumer Cyclical,₹1.06T,86,https://finance.yahoo.com/quote/BOSCHLTD.NS
+GAIL.NS,GAIL (India) Limited,Utilities,₹1.06T,87,https://finance.yahoo.com/quote/GAIL.NS
+CGPOWER.NS,CG Power and Industrial Solutions Limited,Industrials,₹1.05T,88,https://finance.yahoo.com/quote/CGPOWER.NS
+APOLLOHOSP.NS,Apollo Hospitals Enterprise Limited,Healthcare,₹1.03T,89,https://finance.yahoo.com/quote/APOLLOHOSP.NS
+DRREDDY.NS,Dr. Reddy's Laboratories Limited,Healthcare,₹1.03T,90,https://finance.yahoo.com/quote/DRREDDY.NS
+MAXHEALTH.NS,Max Healthcare Institute Limited,Healthcare,₹1.00T,91,https://finance.yahoo.com/quote/MAXHEALTH.NS
+LUPIN.NS,Lupin Limited,Healthcare,₹1.00T,92,https://finance.yahoo.com/quote/LUPIN.NS
+HINDPETRO.NS,Hindustan Petroleum Corporation Limited,Energy,₹0.99T,93,https://finance.yahoo.com/quote/HINDPETRO.NS
+RECLTD.NS,REC Limited,Financial Services,₹0.98T,94,https://finance.yahoo.com/quote/RECLTD.NS
+INDHOTEL.NS,The Indian Hotels Company Limited,Consumer Cyclical,₹0.97T,95,https://finance.yahoo.com/quote/INDHOTEL.NS
+MARICO.NS,Marico Limited,Consumer Defensive,₹0.97T,96,https://finance.yahoo.com/quote/MARICO.NS
+ICICIPRULI.NS,ICICI Prudential Life Insurance Company Limited,Financial Services,₹0.95T,97,https://finance.yahoo.com/quote/ICICIPRULI.NS
+BHEL.NS,Bharat Heavy Electricals Limited,Industrials,₹0.93T,98,https://finance.yahoo.com/quote/BHEL.NS
+ICICIGI.NS,ICICI Lombard General Insurance Company Limited,Financial Services,₹0.92T,99,https://finance.yahoo.com/quote/ICICIGI.NS
+PERSISTENT.NS,Persistent Systems Limited,Technology,₹0.90T,100,https://finance.yahoo.com/quote/PERSISTENT.NS
+ZYDUSLIFE.NS,Zydus Lifesciences Limited,Healthcare,₹0.89T,101,https://finance.yahoo.com/quote/ZYDUSLIFE.NS
+ABCAPITAL.NS,Aditya Birla Capital Limited,Financial Services,₹0.89T,102,https://finance.yahoo.com/quote/ABCAPITAL.NS
+SRF.NS,SRF Limited,Industrials,₹0.86T,103,https://finance.yahoo.com/quote/SRF.NS
+HAVELLS.NS,Havells India Limited,Industrials,₹0.85T,104,https://finance.yahoo.com/quote/HAVELLS.NS
+JSWENERGY.NS,JSW Energy Limited,Utilities,₹0.83T,105,https://finance.yahoo.com/quote/JSWENERGY.NS
+OIL.NS,Oil India Limited,Energy,₹0.80T,106,https://finance.yahoo.com/quote/OIL.NS
+NHPC.NS,NHPC Limited,Utilities,₹0.79T,107,https://finance.yahoo.com/quote/NHPC.NS
+BHARATFORG.NS,Bharat Forge Limited,Consumer Cyclical,₹0.74T,108,https://finance.yahoo.com/quote/BHARATFORG.NS
+NMDC.NS,NMDC Limited,Basic Materials,₹0.74T,109,https://finance.yahoo.com/quote/NMDC.NS
+AUBANK.NS,AU Small Finance Bank Limited,Financial Services,₹0.74T,110,https://finance.yahoo.com/quote/AUBANK.NS
+NAUKRI.NS,Info Edge (India) Limited,Communication Services,₹0.73T,111,https://finance.yahoo.com/quote/NAUKRI.NS
+IDFCFIRSTB.NS,IDFC First Bank Limited,Financial Services,₹0.73T,112,https://finance.yahoo.com/quote/IDFCFIRSTB.NS
+SBICARD.NS,SBI Cards and Payment Services Limited,Financial Services,₹0.72T,113,https://finance.yahoo.com/quote/SBICARD.NS
+POLICYBZR.NS,PB Fintech Limited,Financial Services,₹0.71T,114,https://finance.yahoo.com/quote/POLICYBZR.NS
+FEDERALBNK.NS,The Federal Bank Limited,Financial Services,₹0.70T,115,https://finance.yahoo.com/quote/FEDERALBNK.NS
+INDUSINDBK.NS,IndusInd Bank Limited,Financial Services,₹0.70T,116,https://finance.yahoo.com/quote/INDUSINDBK.NS
+DIXON.NS,Dixon Technologies (India) Limited,Technology,₹0.69T,117,https://finance.yahoo.com/quote/DIXON.NS
+AUROPHARMA.NS,Aurobindo Pharma Limited,Healthcare,₹0.68T,118,https://finance.yahoo.com/quote/AUROPHARMA.NS
+ALKEM.NS,Alkem Laboratories Limited,Healthcare,₹0.67T,119,https://finance.yahoo.com/quote/ALKEM.NS
+IOB.NS,Indian Overseas Bank,Financial Services,₹0.67T,120,https://finance.yahoo.com/quote/IOB.NS

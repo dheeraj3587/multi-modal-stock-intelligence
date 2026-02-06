@@ -1,0 +1,151 @@
+/* MarketIndices Styles */
+.container {
+    display: flex;
+    gap: 12px;
+}
+
+.card {
+    flex: 1;
+    background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-tertiary) 100%);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.card:hover {
+    border-color: var(--neon-green-dim);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.cardHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.indexName {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.liveIndicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    color: var(--accent-green);
+}
+
+.liveDot {
+    width: 6px;
+    height: 6px;
+    background: var(--accent-green);
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.cardBody {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+}
+
+.priceSection {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.price {
+    font-family: var(--font-mono);
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+}
+
+.changeSection {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.changeValue {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.changePercent {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+}
+
+.up .changeValue {
+    color: var(--color-buy);
+}
+
+.up .changePercent {
+    background: var(--color-buy-bg);
+    color: var(--color-buy);
+}
+
+.down .changeValue {
+    color: var(--color-sell);
+}
+
+.down .changePercent {
+    background: var(--color-sell-bg);
+    color: var(--color-sell);
+}
+
+.sparkline {
+    width: 80px;
+    height: 40px;
+}
+
+/* Animated Number */
+.animatedNumber {
+    transition: all 0.3s ease;
+}
+
+.flash {
+    animation: numberFlash 0.5s ease;
+}
+
+@keyframes numberFlash {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.02);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}

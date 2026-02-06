@@ -103,7 +103,7 @@ class Config:
     @property
     def model_checkpoint_dir(self) -> Path:
         """Directory for model checkpoints."""
-        path = os.getenv("MODEL_CHECKPOINT_DIR", "models/checkpoints")
+        path = os.getenv("MODEL_CHECKPOINT_DIR", "backend/ml_models/checkpoints")
         return Path(path)
     
     # Feature Engineering Parameters

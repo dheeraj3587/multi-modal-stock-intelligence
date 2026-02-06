@@ -1,0 +1,191 @@
+/* OrderBook Styles */
+.container {
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-primary);
+}
+
+.title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tabs {
+    display: flex;
+    gap: 4px;
+}
+
+.tab {
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: var(--radius-sm);
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: transparent;
+    color: var(--text-secondary);
+}
+
+.tab:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.tab.active {
+    background: var(--neon-green);
+    color: var(--bg-primary);
+}
+
+.content {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Column Headers */
+.columnHeaders {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    padding: 8px 12px;
+    background: var(--bg-secondary);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+}
+
+.columnHeaders span:last-child {
+    text-align: right;
+}
+
+.columnHeaders span:nth-child(2) {
+    text-align: center;
+}
+
+/* Order Lists */
+.orderList {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.askSide,
+.bidSide {
+    display: flex;
+    flex-direction: column;
+}
+
+.askSide {
+    flex-direction: column-reverse;
+}
+
+/* Order Row */
+.orderRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    padding: 4px 12px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.1s ease;
+}
+
+.orderRow:hover {
+    background: var(--bg-hover);
+}
+
+.orderRow span:last-child {
+    text-align: right;
+}
+
+.orderRow span:nth-child(2) {
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+/* Depth Visualization */
+.depthBar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    opacity: 0.2;
+    pointer-events: none;
+}
+
+.askRow .depthBar {
+    background: var(--color-sell);
+}
+
+.bidRow .depthBar {
+    background: var(--color-buy);
+}
+
+.askRow .price {
+    color: var(--color-sell);
+}
+
+.bidRow .price {
+    color: var(--color-buy);
+}
+
+/* Spread Indicator */
+.spread {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    background: var(--bg-tertiary);
+    border-top: 1px solid var(--border-primary);
+    border-bottom: 1px solid var(--border-primary);
+    font-size: 12px;
+    gap: 12px;
+}
+
+.spreadLabel {
+    color: var(--text-tertiary);
+}
+
+.spreadValue {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+/* Trade History */
+.tradeRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    padding: 4px 12px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+}
+
+.tradeRow .time {
+    color: var(--text-tertiary);
+}
+
+.tradeRow.buy .price {
+    color: var(--color-buy);
+}
+
+.tradeRow.sell .price {
+    color: var(--color-sell);
+}
