@@ -1,7 +1,6 @@
 
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { upstoxService } from '../../services/upstoxService';
 
 const AuthCallback = () => {
     const [searchParams] = useSearchParams();
@@ -10,10 +9,6 @@ const AuthCallback = () => {
 
     useEffect(() => {
         if (code) {
-            // In a real app, we would send this code to our backend to exchange for a token
-            // For now, let's assume our backend exchange endpoint is exposed 
-            // and we can fetch the token from there.
-
             const exchangeToken = async () => {
                 try {
                     // Call our backend to exchange code for token
@@ -21,12 +16,10 @@ const AuthCallback = () => {
                     if (response.ok) {
                         const data = await response.json();
                         if (data.access_token) {
-                            upstoxService.setAccessToken(data.access_token);
                             localStorage.setItem('upstox_access_token', data.access_token);
+                            // Redirect to home, auth context will detect token
                             navigate('/');
                         }
-                    } else {
-                        console.error('Failed to exchange token');
                         navigate('/?error=auth_failed');
                     }
                 } catch (error) {

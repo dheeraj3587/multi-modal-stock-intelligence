@@ -8,7 +8,9 @@ import OrderBook from './components/OrderBook/OrderBook';
 import MarketIndices from './components/MarketIndices/MarketIndices';
 import SentimentPanel from './components/SentimentPanel/SentimentPanel';
 import AuthCallback from './components/Auth/AuthCallback';
+import ProtectedRoute from './components/Auth/ProtectedRoute';
 import StockDashboard from './components/StockDashboard';
+import { AuthProvider } from './contexts/AuthContext';
 import { upstoxService } from './services/upstoxService';
 import { Time } from 'lightweight-charts';
 
@@ -308,11 +310,21 @@ function Dashboard() {
 function App() {
     return (
         <Router>
-            <Routes>
-                <Route path="/auth/callback" element={<AuthCallback />} />
-                <Route path="/" element={<StockDashboard />} />
-                <Route path="/trading" element={<Dashboard />} />
-            </Routes>
+            <AuthProvider>
+                <Routes>
+                    <Route path="/auth/callback" element={<AuthCallback />} />
+                    <Route path="/" element={
+                        <ProtectedRoute>
+                            <StockDashboard />
+                        </ProtectedRoute>
+                    } />
+                    <Route path="/trading" element={
+                        <ProtectedRoute>
+                            <Dashboard />
+                        </ProtectedRoute>
+                    } />
+                </Routes>
+            </AuthProvider>
         </Router>
     );
 }

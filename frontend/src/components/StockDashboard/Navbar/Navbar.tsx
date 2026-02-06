@@ -10,8 +10,10 @@ import {
     Bell,
     Settings,
     User,
-    ChevronDown
+    ChevronDown,
+    LogOut
 } from 'lucide-react';
+import { useAuth } from '../../../contexts/AuthContext';
 import styles from './Navbar.module.css';
 
 interface NavbarProps {
@@ -37,6 +39,8 @@ const Navbar: React.FC<NavbarProps> = ({
 }) => {
     const [market, setMarket] = useState<'NSE' | 'BSE'>('NSE');
     const [showMarketDropdown, setShowMarketDropdown] = useState(false);
+    const [showUserMenu, setShowUserMenu] = useState(false);
+    const { logout } = useAuth();
 
     return (
         <nav className={styles.navbar}>
@@ -121,13 +125,36 @@ const Navbar: React.FC<NavbarProps> = ({
                 >
                     <Settings size={18} />
                 </motion.button>
-                <motion.button
-                    className={styles.iconBtn}
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.95 }}
-                >
-                    <User size={18} />
-                </motion.button>
+                
+                {/* User Menu */}
+                <div style={{ position: 'relative' }}>
+                    <motion.button
+                        className={styles.iconBtn}
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setShowUserMenu(!showUserMenu)}
+                    >
+                        <User size={18} />
+                    </motion.button>
+                    
+                    {showUserMenu && (
+                        <motion.div
+                            className={styles.userMenu}
+                            initial={{ opacity: 0, y: -8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.2 }}
+                            onClick={() => setShowUserMenu(false)}
+                        >
+                            <button
+                                className={styles.menuItem}
+                                onClick={logout}
+                            >
+                                <LogOut size={16} />
+                                <span>Logout</span>
+                            </button>
+                        </motion.div>
+                    )}
+                </div>
 
                 {/* Connect Broker CTA */}
                 <motion.button
