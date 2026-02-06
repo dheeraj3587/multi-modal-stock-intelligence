@@ -202,8 +202,16 @@ docker-compose up -d
 
 Services will be available at:
 - Backend API: http://localhost:8000
-- Frontend Dashboard: http://localhost:3000
+- Frontend Dashboard: http://localhost:5173
 - MLflow UI: http://localhost:5000
+
+#### First Time Login
+1. Navigate to http://localhost:5173
+2. You will see the login page (authentication is required)
+3. Click **"Login with Upstox"** button
+4. Approve access in the Upstox OAuth interface
+5. You'll be automatically redirected to the dashboard
+6. Token is persisted in localStorage for subsequent sessions
 
 ### 4. Local Development Setup
 
@@ -213,6 +221,56 @@ source venv/bin/activate
 pip install -r requirements.txt
 uvicorn backend.main:app --reload
 ```
+
+---
+
+## Authentication
+
+### Upstox OAuth Integration
+
+The platform uses **Upstox OAuth 2.0** for secure authentication:
+
+- Users must log in via Upstox before accessing the dashboard
+- Access tokens are automatically stored in localStorage
+- Tokens persist across browser sessions
+- Logout clears token and returns to login page
+
+#### User Flow
+1. **Login Page** - Professional UI appears on first visit
+2. **OAuth** - User approves access in Upstox app
+3. **Token Exchange** - Backend exchanges auth code for access token
+4. **Dashboard** - Automatic redirect after successful authentication
+5. **Token Persistence** - Subsequent visits load dashboard directly
+6. **Logout** - User menu → Logout option clears authentication
+
+#### Security Features
+- Token stored securely in browser localStorage
+- Cross-tab logout synchronization via storage events
+- Session persistence on tab focus
+- OAuth 2.0 industry-standard flow
+
+---
+
+## Features & Components
+
+### Sentiment Analysis (RAG Pipeline)
+- **LLM**: Gemini 3 Flash with File Search for managed RAG
+- **Embeddings**: Gemini embedding-001 (768-dim vectors)
+- **News Sources**: RSS feeds from Google News, Bloomberg, Reuters, etc.
+- **Models**: Both Gemini API and local Ollama fallback support
+- **Output**: Sentiment score (-1.0 to 1.0), confidence, risk level, key themes
+
+### API Model Validation
+- Startup model availability checks prevent 404 errors
+- Validates requested models against live API
+- Graceful fallback if configured models unavailable
+- Logs available models for debugging
+
+### Embedding Health Checks
+- Detects zero-vector poisoning (all-zero embeddings)
+- Rejects contaminated embedding batches
+- Prevents silent vector store corruption
+- Health metrics: contamination detection, batch statistics
 
 ---
 
@@ -283,6 +341,38 @@ Run the test suite to ensure system stability:
 ```bash
 pytest tests/
 ```
+
+---
+
+## Recent Updates (February 2026)
+
+### Authentication & Security
+- ✅ **Upstox OAuth Login Gate**: Users must authenticate before accessing dashboard
+- ✅ **AuthContext**: Global authentication state management with React Context API
+- ✅ **Protected Routes**: Dashboard and trading views require valid authentication
+- ✅ **Token Persistence**: OAuth tokens stored in localStorage with cross-tab sync
+- ✅ **Logout Functionality**: User menu with logout option and token cleanup
+
+### RAG Pipeline Improvements
+- ✅ **Gemini 3 Flash Models**: Upgraded from Gemini 2.0-Flash for 3x faster inference
+- ✅ **Managed RAG with File Search**: Eliminates local vector DB complexity
+- ✅ **Defensive Safeguards**: Model validation, zero-vector detection, health checks
+- ✅ **google-genai SDK Migration**: Replaced deprecated google-generativeai library
+- ✅ **REST API Embeddings**: Gemini embedding-001 (768-dim) via REST endpoints
+- ✅ **Fallback Architecture**: Primary managed RAG with vector store fallback
+
+### Error Handling & Resilience
+- ✅ **ModelValidator**: Validates model availability at startup
+- ✅ **EmbeddingHealthCheck**: Detects and prevents zero-vector poisoning
+- ✅ **Pre-initialized Fallbacks**: All paths initialized before errors occur
+- ✅ **Graceful Degradation**: System remains functional if primary path fails
+
+### Frontend Enhancements
+- ✅ **Professional Login UI**: Modern gradient design with animations
+- ✅ **Responsive Design**: Mobile-friendly login and dashboard
+- ✅ **User Menu**: Logout, settings, and profile options in navbar
+- ✅ **Token Auto-Detection**: Checks localStorage on app load
+- ✅ **Loading States**: Proper loading indicators during auth flow
 
 ---
 
