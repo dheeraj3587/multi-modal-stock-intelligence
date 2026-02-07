@@ -1,12 +1,19 @@
+"""Market Data API Endpoints - Real market data from Upstox (with YFinance fallback).
+
+All list endpoints read from pre-populated DataCache (Redis) for instant responses.
+The background scheduler (data_refresher) keeps the cache warm every 5 minutes.
 """
-Market Data API Endpoints - Real market data from Upstox (with YFinance fallback)
-"""
-from fastapi import APIRouter, HTTPException, Header
+
+from fastapi import APIRouter, HTTPException, Depends, Query, Response
 from typing import List, Optional
 from pydantic import BaseModel
 from backend.services.market_service import market_service, STOCK_DATA
 from backend.services.sentiment_analyzer import analyzer
 from backend.services.news_service import news_service
+from backend.services.model_inference_service import model_inference_service
+from backend.services.screener_service import ScreenerService
+from backend.services.data_cache import data_cache
+from backend.dependencies import get_access_token, parse_symbols, CandleInterval, get_screener_service
 import logging
 import asyncio
 
@@ -56,6 +63,7 @@ class StockWithSentiment(BaseModel):
     forecastConfidence: float
     sentiment: str  # 'bullish', 'neutral', 'bearish'
     riskLevel: str  # 'low', 'medium', 'high'
+    lastUpdated: Optional[str] = None  # ISO timestamp of last sentiment update
 
 
 class LeaderboardStock(BaseModel):
@@ -76,18 +84,13 @@ async def get_all_stocks():
 
 @router.get("/stocks/quotes", response_model=List[StockQuote])
 async def get_stock_quotes(
-    symbols: str = "RELIANCE,TCS,HDFCBANK,INFY,ICICIBANK",
-    authorization: Optional[str] = Header(None)
+    symbol_list: List[str] = Depends(parse_symbols),
+    access_token: Optional[str] = Depends(get_access_token),
 ):
     """
     Fetch real-time quotes for multiple stocks.
     Uses Upstox if token provided, else falls back to Yahoo Finance.
     """
-    access_token = None
-    if authorization and authorization.startswith("Bearer "):
-        access_token = authorization.split(" ")[1]
-    
-    symbol_list = [s.strip() for s in symbols.split(",")]
     instrument_keys = []
     stock_info_map = {}
     
@@ -130,15 +133,11 @@ async def get_stock_quotes(
 @router.get("/stocks/{symbol}/historical", response_model=List[CandleData])
 async def get_historical_data(
     symbol: str,
-    interval: str = "1minute",
-    days: int = 7,
-    authorization: Optional[str] = Header(None)
+    interval: CandleInterval = CandleInterval.ONE_MINUTE,
+    days: int = Query(default=7, ge=1, le=365),
+    access_token: Optional[str] = Depends(get_access_token),
 ):
     """Fetch historical candle data for a stock"""
-    access_token = None
-    if authorization and authorization.startswith("Bearer "):
-        access_token = authorization.split(" ")[1]
-    
     stock_info = market_service.get_stock_info(symbol.upper())
     if not stock_info:
         raise HTTPException(status_code=404, detail=f"Stock {symbol} not found")
@@ -146,146 +145,214 @@ async def get_historical_data(
     candles = await market_service.get_historical_data(
         access_token, 
         stock_info["instrument_key"],
-        interval,
+        interval.value,
         days
     )
     
     return [CandleData(**c) for c in candles]
 
 
-@router.get("/stocks/with-sentiment", response_model=List[StockWithSentiment])
-async def get_stocks_with_sentiment(
-    authorization: Optional[str] = Header(None)
-):
-    """Get all stocks with AI sentiment analysis"""
-    access_token = None
-    if authorization and authorization.startswith("Bearer "):
-        access_token = authorization.split(" ")[1]
-    
+async def _get_stocks_with_sentiment(access_token: Optional[str]) -> List[StockWithSentiment]:
+    """
+    Return all stocks with sentiment.
+    Reads entirely from DataCache for instant responses.
+    Falls back to inline fetch only during cold-start.
+    """
+    # 1. Try pre-built cache (populated by data_refresher every 5 min)
+    cached_list = data_cache.get_stocks_sentiment()
+    if cached_list:
+        return [StockWithSentiment(**s) for s in cached_list]
+
+    # 2. Cold-start fallback: build from raw caches
     all_stocks = market_service.get_all_stocks()
-    instrument_keys = [s["instrument_key"] for s in all_stocks]
-    
-    # Fetch quotes (handles fallback)
-    quotes = await market_service.get_market_quote(access_token, instrument_keys)
-    
-    # Process sentiment in parallel with timeout
-    async def get_stock_with_sentiment(stock):
-        """Fetch sentiment for a single stock with timeout"""
-        symbol = stock["symbol"]
-        company_name = stock.get("name", symbol)
-        quote_data = quotes.get(stock["instrument_key"], {})
-        ohlc = quote_data.get("ohlc", {})
-        
-        ltp = quote_data.get("last_price", 0) or 0
-        prev_close = ohlc.get("close", ltp) or ltp
-        change = ltp - prev_close if prev_close else 0
-        change_pct = (change / prev_close * 100) if prev_close else 0
-        
-        # Default sentiment (neutral) with timeout
-        avg_sentiment = 0.0
-        rag_confidence = 0.5
-        rag_risk = "medium"
-        
+    quotes = data_cache.get_quotes() or market_service.get_cached_quotes()
+
+    if not quotes:
+        # Cache still warming - do a quick inline fetch
+        instrument_keys = [s["instrument_key"] for s in all_stocks]
         try:
-            # Try to get RAG-powered sentiment with 5 second timeout
-            rag_result = await asyncio.wait_for(
-                asyncio.to_thread(news_service.get_sentiment, symbol, company_name),
-                timeout=5.0
+            quotes = await asyncio.wait_for(
+                market_service.get_market_quote(access_token, instrument_keys),
+                timeout=30.0,
             )
-            avg_sentiment = rag_result.get("sentiment_score", 0.0)
-            rag_confidence = rag_result.get("confidence", 0.5)
-            rag_risk = rag_result.get("risk_level", "MEDIUM").lower()
+            if quotes:
+                market_service.cache_quotes(quotes)
         except asyncio.TimeoutError:
-            logger.warning(f"Sentiment timeout for {symbol}, using default neutral")
-        except Exception as e:
-            logger.warning(f"RAG sentiment failed for {symbol}: {e}")
-        
-        # Determine sentiment category
-        if avg_sentiment > 0.2:
+            logger.warning("Inline quote fetch timeout -- cache still warming")
+            quotes = {}
+
+    result = []
+    for stock in all_stocks:
+        symbol = stock["symbol"]
+        qd = quotes.get(stock["instrument_key"], {})
+        ohlc = qd.get("ohlc", {})
+        ltp = qd.get("last_price", 0) or 0
+        prev = ohlc.get("close", ltp) or ltp
+        change = ltp - prev if prev else 0
+        pct = (change / prev * 100) if prev else 0
+
+        sd = news_service.get_sentiment_cached_only(symbol)
+        score = sd.get("sentiment_score", 0.0)
+        confidence = sd.get("confidence", 0.0)
+        risk = sd.get("risk_level", "medium").lower()
+        is_stale = sd.get("is_stale", False)
+        last_updated = sd.get("last_updated", None)
+
+        if score > 0.2:
             sentiment = "bullish"
-        elif avg_sentiment < -0.2:
+        elif score < -0.2:
             sentiment = "bearish"
         else:
             sentiment = "neutral"
-        
-        # Use RAG risk level or derive from volatility
-        risk_level = rag_risk if rag_risk in ("low", "medium", "high") else "medium"
-        
-        # Forecast confidence from RAG or derived
-        confidence = min(95, max(50, rag_confidence * 100))
-        
-        return StockWithSentiment(
+
+        result.append(StockWithSentiment(
             symbol=symbol,
             name=stock["name"],
             sector=stock["sector"],
             price=ltp,
             change=change,
-            changePercent=change_pct,
-            forecastConfidence=confidence,
+            changePercent=pct,
+            forecastConfidence=min(99, confidence * 100) if not is_stale else 0.0,
             sentiment=sentiment,
-            riskLevel=risk_level
+            riskLevel=risk,
+            lastUpdated=last_updated,
+        ))
+
+    return result
+
+
+@router.get("/stocks/with-sentiment", response_model=List[StockWithSentiment])
+async def get_stocks_with_sentiment(
+    response: Response,
+    access_token: Optional[str] = Depends(get_access_token),
+):
+    # Helps UI and any intermediate caches avoid hammering the backend.
+    response.headers["Cache-Control"] = "public, max-age=30, stale-while-revalidate=60"
+    return await _get_stocks_with_sentiment(access_token)
+
+
+class RealTimeSentiment(BaseModel):
+    """Response model for real-time sentiment lookup"""
+    symbol: str
+    name: str
+    sentiment_score: float
+    sentiment_label: str  # 'bullish', 'neutral', 'bearish'
+    confidence: float
+    risk_level: str
+    reasoning: str
+    last_updated: Optional[str] = None
+    cached: bool = False  # True if from cache, False if freshly analyzed
+
+
+@router.get("/stocks/{symbol}/sentiment", response_model=RealTimeSentiment)
+async def get_stock_sentiment(symbol: str):
+    """
+    Get real-time AI sentiment for ANY stock symbol.
+    This is the endpoint for users to search and analyze any stock they want.
+    
+    - If cached in Redis: returns instantly
+    - If not cached: calls Gemini API for real-time analysis (takes ~5 seconds)
+    """
+    symbol = symbol.upper()
+    
+    # Get stock info (creates dynamic entry if not in STOCK_DATA)
+    stock_info = market_service.get_stock_info(symbol)
+    if stock_info:
+        company_name = stock_info['name']
+    else:
+        # For stocks not in our list, use symbol as name
+        company_name = symbol
+    
+    # Check cache first
+    cached_sentiment = news_service.get_sentiment_cached_only(symbol)
+    is_stale = cached_sentiment.get("is_stale", True)
+    
+    if not is_stale:
+        # Return cached result
+        score = cached_sentiment.get("sentiment_score", 0.0)
+        return RealTimeSentiment(
+            symbol=symbol,
+            name=company_name,
+            sentiment_score=score,
+            sentiment_label="bullish" if score > 0.2 else ("bearish" if score < -0.2 else "neutral"),
+            confidence=cached_sentiment.get("confidence", 0.0),
+            risk_level=cached_sentiment.get("risk_level", "medium"),
+            reasoning=cached_sentiment.get("reasoning", ""),
+            last_updated=cached_sentiment.get("last_updated"),
+            cached=True
         )
     
-    # Fetch sentiment for all stocks in parallel (with limits to avoid overwhelming resources)
-    result = []
-    batch_size = 10  # Process 10 stocks at a time
-    for i in range(0, len(all_stocks), batch_size):
-        batch = all_stocks[i:i+batch_size]
-        try:
-            batch_results = await asyncio.gather(
-                *[get_stock_with_sentiment(stock) for stock in batch],
-                return_exceptions=True
-            )
-            result.extend([r for r in batch_results if not isinstance(r, Exception)])
-        except Exception as e:
-            logger.error(f"Error processing sentiment batch: {e}")
+    # Not cached - fetch real-time from Gemini
+    logger.info(f"Fetching real-time sentiment for {symbol} ({company_name})")
     
-    return result
+    try:
+        result = await asyncio.to_thread(
+            news_service.get_sentiment,
+            symbol,
+            company_name
+        )
+        
+        # Cache the result
+        news_service.update_sentiment_cache(symbol, result)
+        
+        score = result.get("sentiment_score", 0.0)
+        return RealTimeSentiment(
+            symbol=symbol,
+            name=company_name,
+            sentiment_score=score,
+            sentiment_label="bullish" if score > 0.2 else ("bearish" if score < -0.2 else "neutral"),
+            confidence=result.get("confidence", 0.0),
+            risk_level=result.get("risk_level", "medium"),
+            reasoning=result.get("reasoning", ""),
+            last_updated=result.get("last_updated"),
+            cached=False
+        )
+    except Exception as e:
+        logger.error(f"Failed to get sentiment for {symbol}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to analyze {symbol}: {str(e)}")
 
 
 @router.get("/indices", response_model=List[IndexQuote])
 async def get_indices(
-    authorization: Optional[str] = Header(None)
+    access_token: Optional[str] = Depends(get_access_token),
 ):
-    """Fetch market indices (NIFTY, SENSEX, etc.)"""
-    access_token = None
-    if authorization and authorization.startswith("Bearer "):
-        access_token = authorization.split(" ")[1]
-    
+    """Fetch market indices (NIFTY, SENSEX, etc.) - cache-first."""
+    # Try pre-built cache
+    cached = data_cache.get_indices()
+    if cached:
+        return [IndexQuote(**i) for i in cached]
+
+    # Fallback to inline fetch
     all_indices = market_service.get_all_indices()
-    
     instrument_keys = [idx["instrument_key"] for idx in all_indices]
-    
-    # Fetch quotes (handles fallback)
     quotes = await market_service.get_market_quote(access_token, instrument_keys)
-    
+
     result = []
     for idx in all_indices:
-        quote_data = quotes.get(idx["instrument_key"], {})
-        ohlc = quote_data.get("ohlc", {})
-        
-        ltp = quote_data.get("last_price", 0) or 0
-        prev_close = ohlc.get("close", ltp) or ltp
-        change = ltp - prev_close if prev_close else 0
-        change_pct = (change / prev_close * 100) if prev_close else 0
-        
+        qd = quotes.get(idx["instrument_key"], {})
+        ohlc = qd.get("ohlc", {})
+        ltp = qd.get("last_price", 0) or 0
+        prev = ohlc.get("close", ltp) or ltp
+        change = ltp - prev if prev else 0
+        pct = (change / prev * 100) if prev else 0
         result.append(IndexQuote(
-            symbol=idx["symbol"],
-            name=idx["name"],
-            price=ltp,
-            change=change,
-            changePercent=change_pct
+            symbol=idx["symbol"], name=idx["name"],
+            price=ltp, change=change, changePercent=pct,
         ))
-    
     return result
 
 
 @router.get("/leaderboard", response_model=List[LeaderboardStock])
 async def get_leaderboard(
-    authorization: Optional[str] = Header(None)
+    access_token: Optional[str] = Depends(get_access_token),
 ):
-    """Get stocks ranked by growth potential with AI analysis"""
-    stocks_with_sentiment = await get_stocks_with_sentiment(authorization)
+    """Get stocks ranked by growth potential - cache-first."""
+    cached = data_cache.get_leaderboard()
+    if cached:
+        return [LeaderboardStock(**lb) for lb in cached]
+
+    # Fall back to computing in-line
+    stocks_with_sentiment = await _get_stocks_with_sentiment(access_token)
     
     # Sort by forecast confidence and sentiment
     scored = []
@@ -317,10 +384,41 @@ async def get_leaderboard(
     
     return result
 
-@router.get("/stocks/{symbol}/analysis", response_model=dict)
+class NewsItem(BaseModel):
+    title: str
+    source: str
+    published: str
+    sentiment: str
+
+
+class StockAnalysisResponse(BaseModel):
+    symbol: str
+    name: str
+    sector: str
+    currentPrice: float
+    change: float
+    changePercent: float
+    sentiment: str
+    sentimentScore: float
+    sentimentConfidence: float
+    sentimentReasoning: str
+    riskLevel: str
+    riskFactors: List[str]
+    growthPotential: str
+    debtLevel: str
+    predictedPrice: float
+    forecastConfidence: float
+    shortTermOutlook: str
+    longTermOutlook: str
+    recommendation: str
+    recentNews: List[NewsItem]
+    newsCount: int
+
+
+@router.get("/stocks/{symbol}/analysis", response_model=StockAnalysisResponse)
 async def get_stock_analysis(
     symbol: str,
-    authorization: Optional[str] = Header(None)
+    access_token: Optional[str] = Depends(get_access_token),
 ):
     """Get comprehensive AI analysis for a specific stock"""
     try:
@@ -328,11 +426,6 @@ async def get_stock_analysis(
         stock_info = market_service.get_stock_info(symbol)
         if not stock_info:
             raise HTTPException(status_code=404, detail=f"Stock {symbol} not found")
-        
-        # Get current price
-        access_token = None
-        if authorization and authorization.startswith("Bearer "):
-            access_token = authorization.split(" ")[1]
         
         quotes = await market_service.get_market_quote(access_token, [stock_info["instrument_key"]])
         quote_data = quotes.get(stock_info["instrument_key"], {})
@@ -346,14 +439,24 @@ async def get_stock_analysis(
         # Get RAG-powered sentiment analysis
         company_name = stock_info.get("name", symbol)
         try:
-            rag_result = await asyncio.wait_for(
-                asyncio.to_thread(news_service.get_sentiment, symbol, company_name),
-                timeout=10.0
+            # Start RAG task in background
+            rag_task = asyncio.create_task(
+                asyncio.to_thread(news_service.get_sentiment, symbol, company_name)
             )
+            
+            # Wait with timeout (fast response for UI)
+            rag_result = await asyncio.wait_for(rag_task, timeout=5.0)
+            
             sentiment_score = rag_result.get("sentiment_score", 0.0)
             sentiment_confidence = rag_result.get("confidence", 0.5)
             sentiment_reasoning = rag_result.get("reasoning", "Analysis based on recent news and market sentiment")
-        except (asyncio.TimeoutError, Exception) as e:
+        except asyncio.TimeoutError:
+            # Timeout hit - let background task finish!
+            logger.warning(f"Sentiment analysis timeout for {symbol} (background analysis continuing)")
+            sentiment_score = 0.0
+            sentiment_confidence = 0.3
+            sentiment_reasoning = "Deep analysis in progress. Check back shortly."
+        except Exception as e:
             logger.warning(f"Sentiment analysis timeout/failed for {symbol}: {e}")
             sentiment_score = 0.0
             sentiment_confidence = 0.3
@@ -382,7 +485,8 @@ async def get_stock_analysis(
                 }
                 for a in articles[:5]
             ]
-        except:
+        except Exception as e:
+            logger.warning(f"News fetch failed for {symbol}: {e}")
             recent_news = []
         
         # Calculate risk factors
@@ -406,22 +510,52 @@ async def get_stock_analysis(
         growth_potential = "High" if sentiment == "bullish" and len(risk_factors) < 2 else ("Medium" if sentiment != "bearish" else "Low")
         debt_level = "Unknown"
         
-        # Predicted price and recommendation
-        if sentiment == "bullish":
-            predicted_price = ltp * 1.08
-            short_term = "bullish"
-            long_term = "bullish"
-            recommendation = "buy"
-        elif sentiment == "bearish":
-            predicted_price = ltp * 0.92
-            short_term = "bearish"
-            long_term = "bearish"
-            recommendation = "sell"
-        else:
-            predicted_price = ltp
-            short_term = "neutral"
-            long_term = "neutral"
-            recommendation = "hold"
+        # Get ML-based price prediction
+        try:
+            # Fetch historical data for better prediction
+            historical_candles = await market_service.get_historical_data(
+                access_token,
+                stock_info["instrument_key"],
+                interval="1day",
+                days=60
+            )
+            price_history = [c["close"] for c in historical_candles] if historical_candles else []
+            
+            # Get ML prediction
+            prediction_result = model_inference_service.predict_price(
+                symbol=symbol,
+                current_price=ltp,
+                price_history=price_history,
+                sentiment_score=sentiment_score
+            )
+            
+            predicted_price = prediction_result["predicted_price"]
+            forecast_confidence = prediction_result["forecast_confidence"]
+            short_term = prediction_result["short_term_outlook"]
+            long_term = prediction_result["long_term_outlook"]
+            recommendation = prediction_result["recommendation"]
+            
+            logger.info(f"ML prediction for {symbol}: {predicted_price} (confidence: {forecast_confidence}%)")
+            
+        except Exception as e:
+            logger.error(f"ML prediction failed for {symbol}: {e}. Using fallback.")
+            # Fallback to sentiment-based prediction
+            if sentiment == "bullish":
+                predicted_price = ltp * 1.08
+                short_term = "bullish"
+                long_term = "bullish"
+                recommendation = "buy"
+            elif sentiment == "bearish":
+                predicted_price = ltp * 0.92
+                short_term = "bearish"
+                long_term = "bearish"
+                recommendation = "sell"
+            else:
+                predicted_price = ltp
+                short_term = "neutral"
+                long_term = "neutral"
+                recommendation = "hold"
+            forecast_confidence = sentiment_confidence * 100
         
         return {
             "symbol": symbol,
@@ -439,7 +573,7 @@ async def get_stock_analysis(
             "growthPotential": growth_potential,
             "debtLevel": debt_level,
             "predictedPrice": round(predicted_price, 2),
-            "forecastConfidence": round(min(99, sentiment_confidence * 100), 1),
+            "forecastConfidence": round(min(99, forecast_confidence), 1),
             "shortTermOutlook": short_term,
             "longTermOutlook": long_term,
             "recommendation": recommendation,
@@ -452,3 +586,40 @@ async def get_stock_analysis(
     except Exception as e:
         logger.error(f"Error analyzing stock {symbol}: {e}")
         raise HTTPException(status_code=500, detail=f"Error analyzing stock: {str(e)}")
+
+
+@router.get("/stocks/{symbol}/fundamental-analysis", response_model=dict)
+async def get_fundamental_analysis(
+    symbol: str,
+    service: ScreenerService = Depends(get_screener_service),
+):
+    """Get fundamental analysis from Screener.in with Yahoo Finance fallback"""
+    # 1. Try Screener.in first
+    try:
+        # Get company name
+        stock_info = market_service.get_stock_info(symbol)
+        company_name = stock_info.get("name") if stock_info else None
+        
+        data = await asyncio.to_thread(service.get_company_details, symbol, company_name)
+        
+        if data:
+            return data
+            
+    except Exception as e:
+        logger.warning(f"Screener.in scraping failed for {symbol}: {e}. Trying fallback.")
+
+    # 2. Fallback to Yahoo Finance
+    try:
+        logger.info(f"Attempting Yahoo Finance fallback for {symbol} fundamentals")
+        fallback_data = await asyncio.to_thread(market_service.get_fundamental_info, symbol)
+        
+        if fallback_data:
+            return fallback_data
+            
+        raise HTTPException(status_code=404, detail="Fundamental data not found on Screener.in or Yahoo Finance")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching fundamental analysis for {symbol}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching fundamental data: {str(e)}")

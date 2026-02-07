@@ -1,15 +1,22 @@
 """
 RAG-based sentiment analyzer using AI models with vector search context.
 Supports both OpenAI and local models (via Ollama).
+Includes robust retry logic, timeouts, and error handling.
 """
 
 import os
 import json
+import time
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Timeout configurations (increased for LLM calls)
+LLM_TIMEOUT = int(os.getenv("LLM_TIMEOUT", "30"))  # 30s default
+LLM_MAX_RETRIES = int(os.getenv("LLM_MAX_RETRIES", "2"))  # 2 retries
+LLM_RETRY_DELAY = float(os.getenv("LLM_RETRY_DELAY", "2.0"))  # 2s initial delay
 
 
 class RAGSentimentAnalyzer:
@@ -159,7 +166,7 @@ Respond ONLY with valid JSON in this exact format:
         context_articles: Optional[List[Tuple[Dict, float]]] = None
     ) -> Dict:
         """
-        Analyze sentiment using RAG approach.
+        Analyze sentiment using RAG approach with robust retry logic.
         
         Args:
             company_name: Company name
@@ -183,68 +190,93 @@ Respond ONLY with valid JSON in this exact format:
         context_articles = context_articles or []
         prompt = self._create_sentiment_prompt(company_name, symbol, articles, context_articles)
         
-        try:
-            if self.model_type == "openai":
-                response = self.client.chat.completions.create(
-                    model=self.model_name,
-                    messages=[
-                        {"role": "system", "content": "You are a financial sentiment analysis expert. Always respond with valid JSON."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=0.3,
-                    max_tokens=500
-                )
-                result_text = response.choices[0].message.content
+        # Attempt analysis with retries and exponential backoff
+        last_error = None
+        for attempt in range(LLM_MAX_RETRIES + 1):
+            try:
+                result_text = self._call_llm(prompt, attempt)
                 
-            elif self.model_type == "anthropic":
-                response = self.client.messages.create(
-                    model=self.model_name,
-                    max_tokens=500,
-                    temperature=0.3,
-                    messages=[
-                        {"role": "user", "content": prompt}
-                    ]
-                )
-                result_text = response.content[0].text
+                # Parse the response
+                result = self._parse_llm_response(result_text)
                 
-            elif self.model_type == "gemini":
-                response = self.client.models.generate_content(
+                # Add metadata
+                result['article_count'] = len(articles)
+                result['analyzed_at'] = datetime.now().isoformat()
+                result['model'] = f"{self.model_type}:{self.model_name}"
+                
+                logger.info(f"Analyzed sentiment for {symbol}: {result['sentiment_score']:.2f} (confidence: {result['confidence']:.2f})")
+                return result
+                
+            except Exception as e:
+                last_error = e
+                if attempt < LLM_MAX_RETRIES:
+                    delay = LLM_RETRY_DELAY * (2 ** attempt)  # Exponential backoff
+                    logger.warning(f"Sentiment analysis attempt {attempt + 1} failed for {symbol}: {e}. Retrying in {delay:.1f}s...")
+                    time.sleep(delay)
+                else:
+                    logger.error(f"Sentiment analysis failed for {symbol} after {LLM_MAX_RETRIES + 1} attempts: {e}")
+        
+        # Return default response if all retries failed
+        return {
+            **self._default_sentiment_response(),
+            "article_count": len(articles),
+            "error": str(last_error)
+        }
+    
+    def _call_llm(self, prompt: str, attempt: int = 0) -> str:
+        """Call LLM with appropriate timeout and error handling."""
+        timeout = LLM_TIMEOUT + (attempt * 10)  # Increase timeout on retries
+        
+        if self.model_type == "openai":
+            response = self.client.chat.completions.create(
+                model=self.model_name,
+                messages=[
+                    {"role": "system", "content": "You are a financial sentiment analysis expert. Always respond with valid JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3,
+                max_tokens=500,
+                timeout=timeout,
+            )
+            return response.choices[0].message.content
+            
+        elif self.model_type == "anthropic":
+            response = self.client.messages.create(
+                model=self.model_name,
+                max_tokens=500,
+                temperature=0.3,
+                messages=[{"role": "user", "content": prompt}],
+                timeout=timeout,
+            )
+            return response.content[0].text
+            
+        elif self.model_type == "gemini":
+            # Gemini SDK may not support timeout directly, wrap in threading
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(
+                    self.client.models.generate_content,
                     model=self.model_name,
                     contents=prompt
                 )
-                result_text = getattr(response, "text", "")
-                
-            elif self.model_type == "local" and self.client:
-                response = self.client.chat(
-                    model=self.model_name,
-                    messages=[
-                        {"role": "system", "content": "You are a financial sentiment analyst. Respond only with valid JSON."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    options={"temperature": 0.3}
-                )
-                result_text = response['message']['content']
-            else:
-                return self._default_sentiment_response()
+                try:
+                    response = future.result(timeout=timeout)
+                    return getattr(response, "text", "")
+                except concurrent.futures.TimeoutError:
+                    raise TimeoutError(f"Gemini API call timed out after {timeout}s")
             
-            # Parse the response
-            result = self._parse_llm_response(result_text)
-            
-            # Add metadata
-            result['article_count'] = len(articles)
-            result['analyzed_at'] = datetime.now().isoformat()
-            result['model'] = f"{self.model_type}:{self.model_name}"
-            
-            logger.info(f"Analyzed sentiment for {symbol}: {result['sentiment_score']:.2f} (confidence: {result['confidence']:.2f})")
-            return result
-            
-        except Exception as e:
-            logger.error(f"Error in sentiment analysis: {e}")
-            return {
-                **self._default_sentiment_response(),
-                "article_count": len(articles),
-                "error": str(e)
-            }
+        elif self.model_type == "local" and self.client:
+            response = self.client.chat(
+                model=self.model_name,
+                messages=[
+                    {"role": "system", "content": "You are a financial sentiment analyst. Respond only with valid JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                options={"temperature": 0.3},
+            )
+            return response['message']['content']
+        else:
+            raise ValueError(f"No valid LLM client configured for {self.model_type}")
     
     def analyze_batch(
         self,
@@ -253,7 +285,7 @@ Respond ONLY with valid JSON in this exact format:
         context_dict: Optional[Dict[str, List[Tuple[Dict, float]]]] = None
     ) -> Dict[str, Dict]:
         """
-        Analyze sentiment for multiple stocks.
+        Analyze sentiment for multiple stocks using a single LLM call (or few calls).
         
         Args:
             stocks: List of dicts with 'symbol' and 'company_name' keys
@@ -263,22 +295,101 @@ Respond ONLY with valid JSON in this exact format:
         Returns:
             Dict mapping symbol to sentiment analysis
         """
-        results = {}
+        if not stocks:
+            return {}
+
         context_dict = context_dict or {}
         
-        for stock in stocks:
-            symbol = stock['symbol']
-            company_name = stock['company_name']
-            articles = articles_dict.get(symbol, [])
-            context = context_dict.get(symbol, [])
-            
-            results[symbol] = self.analyze_sentiment(
-                company_name=company_name,
-                symbol=symbol,
-                articles=articles,
-                context_articles=context
-            )
+        # Prepare the batch prompt
+        prompt = """You are a financial sentiment analyst.
+For each stock listed below, analyze the provided news headlines and return a sentiment score (-1.0 to 1.0) and confidence (0.0 to 1.0).
+
+STOCKS DATA:
+"""
         
+        valid_stocks = []
+        
+        for i, stock in enumerate(stocks, 1):
+            symbol = stock.get('symbol')
+            company = stock.get('company_name', symbol)
+            articles = articles_dict.get(symbol, [])
+            
+            # Skip if no articles
+            if not articles:
+                continue
+                
+            valid_stocks.append(symbol)
+            
+            prompt += f"\n=== {i}. {company} ({symbol}) ===\n"
+            prompt += "News Headlines:\n"
+            for art in articles[:4]:  # Top 4 articles only to save tokens
+                title = art.get('title', 'No title').replace('\n', ' ')
+                source = art.get('source', 'Unknown')
+                prompt += f"- {title} [{source}]\n"
+                
+            # Add context if available
+            context = context_dict.get(symbol, [])
+            if context:
+                prompt += "Historical Context:\n"
+                for art, score in context[:2]:
+                    prompt += f"- {art.get('title', '')} (relevance: {score:.2f})\n"
+
+        if not valid_stocks:
+            return {}
+
+        prompt += """
+\nINSTRUCTIONS:
+For each stock above, determine:
+1. Sentiment Score (-1.0 to 1.0)
+2. Confidence (0.0 to 1.0)
+3. Risk Level (LOW, MEDIUM, HIGH)
+
+Return ONLY valid JSON mapping stock symbol to result.
+Example Format:
+{
+  "RELIANCE": {"sentiment_score": 0.5, "confidence": 0.8, "risk_level": "LOW"},
+  "TCS": {"sentiment_score": -0.2, "confidence": 0.6, "risk_level": "MEDIUM"}
+}
+"""
+
+        # Call LLM
+        results = {}
+        try:
+            logger.info(f"Batch analyzing sentiment for {len(valid_stocks)} stocks")
+            response_text = self._call_llm(prompt)
+            parsed = self._parse_llm_response(response_text)
+            
+            # Validate and format results
+            for symbol in valid_stocks:
+                if symbol in parsed:
+                    data = parsed[symbol]
+                     # Ensure keys exist
+                    results[symbol] = {
+                        "sentiment_score": float(data.get("sentiment_score", 0.0)),
+                        "confidence": float(data.get("confidence", 0.5)),
+                        "risk_level": str(data.get("risk_level", "MEDIUM")),
+                        "reasoning": "Batch analysis based on recent headlines",
+                        "analyzed_at": datetime.now().isoformat()
+                    }
+                else:
+                    results[symbol] = self._default_sentiment_response()
+                    
+        except Exception as e:
+            logger.error(f"Batch sentiment analysis failed: {e}")
+            for symbol in valid_stocks:
+                results[symbol] = self._default_sentiment_response()
+        
+        # Fill in missing stocks with empty response
+        for stock in stocks:
+            symbol = stock.get('symbol')
+            if symbol not in results:
+                results[symbol] = {
+                    "sentiment_score": 0.0,
+                    "confidence": 0.0,
+                    "reasoning": "No news data available",
+                    "article_count": 0
+                }
+                
         return results
 
 

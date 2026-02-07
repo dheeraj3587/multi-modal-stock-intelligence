@@ -29,7 +29,7 @@ class GeminiFileSearchRAG:
         self.model_name = model_name
         self.cache_expiry = timedelta(hours=cache_hours)
         self.store_prefix = store_prefix
-        self._store_cache: Dict[str, Dict[str, str]] = {}
+        self._store_cache: Dict[str, Dict] = {}
 
     def analyze_sentiment(self, symbol: str, company_name: str, articles: List[Dict]) -> Dict:
         if not articles:
@@ -43,15 +43,22 @@ class GeminiFileSearchRAG:
 
         try:
             tool = self._build_file_search_tool(store_name)
-            config = self.genai.types.GenerateContentConfig(
-                tools=[tool],
-                response_mime_type="application/json"
-            )
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=prompt,
-                config=config
-            )
+            if tool is None:
+                # File Search not available, fall back to regular content generation
+                response = self.client.models.generate_content(
+                    model=self.model_name,
+                    contents=prompt
+                )
+            else:
+                config = self.genai.types.GenerateContentConfig(
+                    tools=[tool],
+                    response_mime_type="application/json"
+                )
+                response = self.client.models.generate_content(
+                    model=self.model_name,
+                    contents=prompt,
+                    config=config
+                )
             result = self._parse_response(getattr(response, "text", ""))
             result["article_count"] = len(articles)
             result["analyzed_at"] = datetime.now().isoformat()
@@ -75,14 +82,19 @@ class GeminiFileSearchRAG:
         )
 
     def _build_file_search_tool(self, store_name: str):
+        """Build file search tool for Gemini File Search."""
         try:
+            # Try the newer API format first
             return self.genai.types.Tool(
                 file_search=self.genai.types.FileSearch(
                     file_search_store_names=[store_name]
                 )
             )
-        except Exception:
-            return {"file_search": {"file_search_store_names": [store_name]}}
+        except Exception as e:
+            logger.warning(f"Could not create FileSearch tool with types API: {e}")
+            # Return None to indicate File Search is not available
+            # The caller should handle this gracefully
+            return None
 
     def _get_or_create_store(self, symbol: str, company_name: str, articles: List[Dict]) -> Optional[str]:
         cache_key = f"{symbol.lower()}"

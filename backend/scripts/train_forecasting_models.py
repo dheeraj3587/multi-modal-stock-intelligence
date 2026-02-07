@@ -47,7 +47,7 @@ from backend.utils.logger import get_logger
 from backend.utils.model_utils import set_seed, get_device, count_model_parameters
 from backend.utils.dataset import create_dataloaders
 from backend.utils.metrics import mean_absolute_error
-from models import (
+from backend.ml_models import (
     LSTMForecaster, GRUForecaster, TransformerForecaster,
     LSTMConfig, GRUConfig, TransformerConfig
 )

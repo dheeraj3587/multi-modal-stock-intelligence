@@ -1,4 +1,5 @@
 import os
+import asyncio
 from newsapi import NewsApiClient
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
@@ -10,6 +11,7 @@ from backend.services.vector_store import create_vector_store
 from backend.services.rag_sentiment_analyzer import create_sentiment_analyzer
 from backend.services.gemini_file_search import GeminiFileSearchRAG
 from backend.services.model_validator import ModelValidator
+from backend.services.redis_cache import redis_cache
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -34,7 +36,7 @@ class NewsService:
             self.client = NewsApiClient(api_key=self.api_key)
         
         self.cache = {}
-        self.cache_expiry = timedelta(hours=2)
+        self.cache_expiry = timedelta(hours=6)
         
         # RAG components (lazy initialization)
         self._vector_store = None
@@ -240,7 +242,18 @@ class NewsService:
             if not self._vector_store:
                 return self._default_sentiment_fallback("Vector store unavailable")
 
-            self._vector_store.add_documents(articles, text_key='content')
+            # Use 'description' key since RSS articles have 'description' not 'content'
+            # Combine title and description for better embeddings
+            docs_for_embedding = []
+            for article in articles:
+                combined_text = f"{article.get('title', '')} {article.get('description', '')}".strip()
+                if combined_text:
+                    doc_copy = article.copy()
+                    doc_copy['combined_text'] = combined_text
+                    docs_for_embedding.append(doc_copy)
+            
+            if docs_for_embedding:
+                self._vector_store.add_documents(docs_for_embedding, text_key='combined_text')
 
             # Search for similar historical articles
             query = f"{company_name} {symbol} stock market news"
@@ -277,24 +290,135 @@ class NewsService:
             "article_count": 0
         }
     
+
+        
+    # Locking for deduplication
+    sentiment_locks: set[str] = set()
+    sentiment_lock_mutex = asyncio.Lock()
+
+    def get_sentiment_cached_only(self, symbol: str) -> Dict:
+        """
+        Get sentiment from Redis cache ONLY. Never triggers LLM calls.
+        Falls back to in-memory cache, then returns default if missing.
+        """
+        # 1. Try Redis first
+        redis_data = redis_cache.get_sentiment(symbol)
+        if redis_data:
+            return redis_data
+        
+        # 2. Fallback to in-memory cache
+        cache_key = f"sentiment_{symbol}"
+        if cache_key in self.cache:
+            data, timestamp = self.cache[cache_key]
+            return data
+            
+        # 3. Return default (stale indicator)
+        return {
+            "sentiment_score": 0.0,
+            "confidence": 0.0,
+            "risk_level": "medium",
+            "reasoning": "Analysis pending (will appear shortly)",
+            "is_stale": True,
+            "last_updated": None
+        }
+    
+    def update_sentiment_cache(self, symbol: str, data: Dict):
+        """
+        Update both Redis and in-memory cache with new sentiment data.
+        """
+        # 1. Update Redis (persistent)
+        redis_cache.set_sentiment(symbol, data)
+        
+        # 2. Update in-memory (fast fallback)
+        cache_key = f"sentiment_{symbol}"
+        self.cache[cache_key] = (data, datetime.now())
+
+    async def refresh_sentiment_background(self, symbol: str, company_name: str = ""):
+        """
+        Background task to fresh sentiment. 
+        Uses lock to prevent duplicate processing.
+        """
+        async with self.sentiment_lock_mutex:
+            if symbol in self.sentiment_locks:
+                logger.info(f"Skipping duplicate sentiment job for {symbol}")
+                return
+            self.sentiment_locks.add(symbol)
+            
+        try:
+            # 1. Fetch News (IO bound)
+            articles = await asyncio.to_thread(self.get_company_news, symbol, company_name)
+            
+            # 2. Analyze (LLM bound)
+            if self._rag_initialized and self._sentiment_analyzer:
+                result = await asyncio.to_thread(
+                    self._sentiment_analyzer.analyze_sentiment, 
+                    company_name, symbol, articles
+                )
+                
+                # 3. Update Cache
+                cache_key = f"sentiment_{symbol}"
+                self.cache[cache_key] = (result, datetime.now())
+                logger.info(f"Updated background sentiment for {symbol}")
+                
+        except Exception as e:
+            logger.error(f"Background sentiment failed for {symbol}: {e}")
+        finally:
+            async with self.sentiment_lock_mutex:
+                self.sentiment_locks.remove(symbol)
+
+    async def refresh_all_sentiments(self, stocks: List[Dict]):
+        """
+        Batch refresh logic for scheduler.
+        """
+        logger.info(f"Starting batch sentiment refresh for {len(stocks)} stocks")
+        
+        # 1. Fetch all news in parallel
+        # We limit concurrency to avoid rate limits
+        articles_map = {}
+        sem = asyncio.Semaphore(5)  # Max 5 concurrent news fetches
+        
+        async def fetch_safe(stock):
+            async with sem:
+                sym = stock['symbol']
+                name = stock.get('name', sym)
+                # This already uses cache/RSS
+                arts = await asyncio.to_thread(self.get_company_news, sym, name)
+                articles_map[sym] = arts
+                
+        await asyncio.gather(*[fetch_safe(s) for s in stocks], return_exceptions=True)
+        
+        # 2. Batch LLM Analysis (One big prompt or chunks)
+        if self._rag_initialized and self._sentiment_analyzer:
+            # Chunking to avoid massive prompts (e.g. 10 stocks per chunk)
+            chunk_size = 10
+            for i in range(0, len(stocks), chunk_size):
+                chunk = stocks[i:i+chunk_size]
+                try:
+                    results = await asyncio.to_thread(
+                        self._sentiment_analyzer.analyze_batch,
+                        chunk,
+                        articles_map
+                    )
+                    
+                    # 3. Update Cache
+                    for sym, res in results.items():
+                        cache_key = f"sentiment_{sym}"
+                        self.cache[cache_key] = (res, datetime.now())
+                        
+                    logger.info(f"Updated batch sentiment for {len(chunk)} stocks")
+                except Exception as e:
+                    logger.error(f"Batch analysis chunk failed: {e}")
+                    
+        logger.info("Sentiment refresh cycle completed")
+
     def get_batch_sentiment(self, stocks: List[Dict]) -> Dict[str, Dict]:
         """
-        Get sentiment for multiple stocks efficiently.
-        
-        Args:
-            stocks: List of dicts with 'symbol' and 'company_name' keys
-            
-        Returns:
-            Dict mapping symbol to sentiment analysis
+        Get sentiment for multiple stocks efficiently from CACHE.
         """
-        if not self.use_rag or not self._rag_initialized:
-            self._initialize_rag()
-        
         results = {}
         for stock in stocks:
             symbol = stock.get('symbol', '')
-            company_name = stock.get('company_name', stock.get('name', ''))
-            results[symbol] = self.get_sentiment(symbol, company_name)
+            results[symbol] = self.get_sentiment_cached_only(symbol)
         
         return results
 

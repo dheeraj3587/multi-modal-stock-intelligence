@@ -5,14 +5,23 @@ Fetches news from multiple free sources without rate limits.
 
 import feedparser
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 from urllib.parse import quote
 import hashlib
 import logging
+import time
 
 logger = logging.getLogger(__name__)
+
+# Robustness configuration
+RSS_TIMEOUT = 15  # seconds for RSS/web requests
+RSS_MAX_RETRIES = 3
+RSS_BACKOFF_FACTOR = 0.5
+RSS_STATUS_FORCELIST = [429, 500, 502, 503, 504]
 
 
 class RSSNewsFetcher:
@@ -22,6 +31,24 @@ class RSSNewsFetcher:
         self.cache = {}
         self.cache_expiry = timedelta(hours=cache_hours)
         self.user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        self._session = None  # Lazy initialization
+        self._session = None  # Lazy initialization
+    
+    def _get_session(self) -> requests.Session:
+        """Get or create HTTP session with retry logic."""
+        if self._session is None:
+            self._session = requests.Session()
+            retry_strategy = Retry(
+                total=RSS_MAX_RETRIES,
+                backoff_factor=RSS_BACKOFF_FACTOR,
+                status_forcelist=RSS_STATUS_FORCELIST,
+                allowed_methods=["GET", "POST"]
+            )
+            adapter = HTTPAdapter(max_retries=retry_strategy)
+            self._session.mount("http://", adapter)
+            self._session.mount("https://", adapter)
+            logger.debug(f"Created HTTP session with {RSS_MAX_RETRIES} retries")
+        return self._session
         
     def _get_cache_key(self, symbol: str) -> str:
         """Generate cache key for symbol."""
@@ -63,7 +90,10 @@ class RSSNewsFetcher:
             encoded_query = quote(query)
             rss_url = f"https://news.google.com/rss/search?q={encoded_query}&hl=en-IN&gl=IN&ceid=IN:en"
             
-            feed = feedparser.parse(rss_url)
+            logger.debug(f"Fetching Google News RSS: {rss_url}")
+            
+            # feedparser handles its own requests, but we can add timeout via custom handler
+            feed = feedparser.parse(rss_url, request_headers={'User-Agent': self.user_agent})
             
             for entry in feed.entries[:max_articles]:
                 try:
@@ -82,7 +112,13 @@ class RSSNewsFetcher:
                 except Exception as e:
                     logger.warning(f"Error parsing Google News entry: {e}")
                     continue
+            
+            logger.info(f"Fetched {len(articles)} articles from Google News for '{query}'")
                     
+        except requests.exceptions.Timeout:
+            logger.error(f"Timeout fetching Google News RSS for '{query}' (>{RSS_TIMEOUT}s)")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Network error fetching Google News RSS: {e}")
         except Exception as e:
             logger.error(f"Error fetching Google News RSS: {e}")
         
@@ -104,8 +140,13 @@ class RSSNewsFetcher:
             headers = {'User-Agent': self.user_agent}
             search_url = f"https://www.moneycontrol.com/news/tags/{company_name.lower().replace(' ', '-')}.html"
             
-            response = requests.get(search_url, headers=headers, timeout=10)
+            logger.debug(f"Fetching MoneyControl news: {search_url}")
+            
+            session = self._get_session()
+            response = session.get(search_url, headers=headers, timeout=RSS_TIMEOUT)
+            
             if response.status_code != 200:
+                logger.warning(f"MoneyControl returned status {response.status_code}")
                 return articles
             
             soup = BeautifulSoup(response.content, 'html.parser')
@@ -131,7 +172,15 @@ class RSSNewsFetcher:
                 except Exception as e:
                     logger.warning(f"Error parsing MoneyControl article: {e}")
                     continue
+            
+            logger.info(f"Fetched {len(articles)} articles from MoneyControl for '{company_name}'")
                     
+        except requests.exceptions.Timeout:
+            logger.error(f"Timeout fetching MoneyControl news for '{company_name}' (>{RSS_TIMEOUT}s)")
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"HTTP error fetching MoneyControl: {e.response.status_code}")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Network error fetching MoneyControl: {e}")
         except Exception as e:
             logger.error(f"Error fetching MoneyControl news: {e}")
         
@@ -159,9 +208,14 @@ class RSSNewsFetcher:
             
             query_lower = query.lower()
             
-            for rss_url in rss_urls:
+            for idx, rss_url in enumerate(rss_urls):
                 try:
-                    feed = feedparser.parse(rss_url)
+                    # Small delay between feeds to avoid rate limiting
+                    if idx > 0:
+                        time.sleep(0.3)
+                    
+                    logger.debug(f"Fetching ET RSS feed: {rss_url}")
+                    feed = feedparser.parse(rss_url, request_headers={'User-Agent': self.user_agent})
                     
                     for entry in feed.entries:
                         # Filter by query relevance
@@ -187,7 +241,13 @@ class RSSNewsFetcher:
                 except Exception as e:
                     logger.warning(f"Error parsing ET RSS feed {rss_url}: {e}")
                     continue
+            
+            logger.info(f"Fetched {len(articles)} articles from Economic Times for '{query}'")
                     
+        except requests.exceptions.Timeout:
+            logger.error(f"Timeout fetching Economic Times RSS for '{query}' (>{RSS_TIMEOUT}s)")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Network error fetching Economic Times RSS: {e}")
         except Exception as e:
             logger.error(f"Error fetching Economic Times RSS: {e}")
         
@@ -222,18 +282,33 @@ class RSSNewsFetcher:
         ]
         
         # Fetch from multiple sources
-        for query in queries:
-            # Google News (most reliable)
-            google_articles = self.fetch_google_news_rss(query, max_articles=10)
-            all_articles.extend(google_articles)
+        for idx, query in enumerate(queries):
+            # Throttle requests to avoid overwhelming providers
+            if idx > 0:
+                time.sleep(0.5)  # 500ms between query batches
             
-            # Economic Times
-            et_articles = self.fetch_economic_times_rss(query, max_articles=5)
-            all_articles.extend(et_articles)
+            try:
+                # Google News (most reliable)
+                google_articles = self.fetch_google_news_rss(query, max_articles=10)
+                all_articles.extend(google_articles)
+                
+                # Small delay between different sources
+                time.sleep(0.3)
+                
+                # Economic Times
+                et_articles = self.fetch_economic_times_rss(query, max_articles=5)
+                all_articles.extend(et_articles)
+            except Exception as e:
+                logger.warning(f"Error fetching news for query '{query}': {e}")
+                continue
         
         # Fetch from MoneyControl
-        mc_articles = self.fetch_moneycontrol_news(company_name, max_articles=5)
-        all_articles.extend(mc_articles)
+        try:
+            time.sleep(0.3)  # Delay before MoneyControl
+            mc_articles = self.fetch_moneycontrol_news(company_name, max_articles=5)
+            all_articles.extend(mc_articles)
+        except Exception as e:
+            logger.warning(f"Error fetching MoneyControl news: {e}")
         
         # Deduplicate by URL and title similarity
         deduplicated_articles = []
