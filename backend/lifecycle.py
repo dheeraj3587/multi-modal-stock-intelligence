@@ -12,6 +12,7 @@ from backend.services.news_service import news_service
 from backend.services.market_service import market_service
 from backend.services.data_refresher import run_refresh_sync, run_heavy_refresh_sync
 from backend.services.cache_warmup import warmup_all_caches
+from backend.services.upstox_client import upstox_client
 
 logger = logging.getLogger(__name__)
 
@@ -91,4 +92,5 @@ async def lifespan(app: FastAPI):
 
     # ── SHUTDOWN PHASE ────────────────────────────────────────────
     scheduler_service.shutdown()
+    await upstox_client.close()
     print("👋 Stock Intelligence Platform Backend shutting down...")

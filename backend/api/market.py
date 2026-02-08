@@ -116,35 +116,38 @@ async def get_all_stocks():
 
 @router.get("/stocks/quotes", response_model=List[StockQuote])
 async def get_stock_quotes(
+    response: Response,
     symbol_list: List[str] = Depends(parse_symbols),
     access_token: Optional[str] = Depends(get_access_token),
 ):
     """
     Fetch real-time quotes for multiple stocks.
-    Uses Upstox if token provided, else falls back to Yahoo Finance.
+    Uses cached quotes first, then Upstox/YFinance as fallback.
     """
+    response.headers["Cache-Control"] = "public, max-age=15, stale-while-revalidate=30"
+
     instrument_keys = []
     stock_info_map = {}
-    
     for symbol in symbol_list:
         info = market_service.get_stock_info(symbol)
         if info:
             instrument_keys.append(info["instrument_key"])
             stock_info_map[info["instrument_key"]] = info
-    
-    # Fetch real quotes (MarketService handles fallback)
-    quotes = await market_service.get_market_quote(access_token, instrument_keys)
-    
+
+    cached_quotes = data_cache.get_quotes()
+    if cached_quotes and all(k in cached_quotes for k in instrument_keys):
+        quotes = cached_quotes
+    else:
+        quotes = await market_service.get_market_quote(access_token, instrument_keys)
+
     result = []
     for key, info in stock_info_map.items():
         quote_data = quotes.get(key, {})
         ohlc = quote_data.get("ohlc", {})
-        
         ltp = quote_data.get("last_price", 0) or 0
         prev_close = ohlc.get("close", ltp) or ltp
         change = ltp - prev_close if prev_close else 0
         change_pct = (change / prev_close * 100) if prev_close else 0
-        
         result.append(StockQuote(
             symbol=info["symbol"],
             name=info["name"],
@@ -158,29 +161,37 @@ async def get_stock_quotes(
             volume=quote_data.get("volume", 0) or 0,
             instrument_key=info["instrument_key"]
         ))
-    
     return result
 
 
 @router.get("/stocks/{symbol}/historical", response_model=List[CandleData])
 async def get_historical_data(
+    response: Response,
     symbol: str,
     interval: CandleInterval = CandleInterval.ONE_MINUTE,
     days: int = Query(default=7, ge=1, le=365),
     access_token: Optional[str] = Depends(get_access_token),
 ):
-    """Fetch historical candle data for a stock"""
-    stock_info = market_service.get_stock_info(symbol.upper())
+    """Fetch historical candle data for a stock — cache-first."""
+    symbol = symbol.upper()
+    response.headers["Cache-Control"] = "public, max-age=60, stale-while-revalidate=120"
+
+    stock_info = market_service.get_stock_info(symbol)
     if not stock_info:
         raise HTTPException(status_code=404, detail=f"Stock {symbol} not found")
-    
+
+    cached = data_cache.get_historical(symbol, interval.value)
+    if cached:
+        return [CandleData(**c) for c in cached]
+
     candles = await market_service.get_historical_data(
-        access_token, 
+        access_token,
         stock_info["instrument_key"],
         interval.value,
         days
     )
-    
+    if candles:
+        data_cache.set_historical(symbol, interval.value, candles, ttl=300)
     return [CandleData(**c) for c in candles]
 
 
@@ -346,10 +357,11 @@ async def get_stock_sentiment(symbol: str):
 
 @router.get("/indices", response_model=List[IndexQuote])
 async def get_indices(
+    response: Response,
     access_token: Optional[str] = Depends(get_access_token),
 ):
     """Fetch market indices (NIFTY, SENSEX, etc.) - cache-first."""
-    # Try pre-built cache
+    response.headers["Cache-Control"] = "public, max-age=30, stale-while-revalidate=60"
     cached = data_cache.get_indices()
     if cached:
         return [IndexQuote(**i) for i in cached]
@@ -376,9 +388,11 @@ async def get_indices(
 
 @router.get("/leaderboard", response_model=List[LeaderboardStock])
 async def get_leaderboard(
+    response: Response,
     access_token: Optional[str] = Depends(get_access_token),
 ):
     """Get stocks ranked by growth potential - cache-first."""
+    response.headers["Cache-Control"] = "public, max-age=30, stale-while-revalidate=60"
     cached = data_cache.get_leaderboard()
     if cached:
         return [LeaderboardStock(**lb) for lb in cached]

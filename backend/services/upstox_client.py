@@ -38,6 +38,17 @@ class UpstoxClient:
     def __init__(self):
         self.api_key = os.getenv("UPSTOX_API_KEY", "")
         self.api_secret = os.getenv("UPSTOX_API_SECRET", "")
+        self._client: Optional[httpx.AsyncClient] = None
+
+    async def _get_client(self) -> httpx.AsyncClient:
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(timeout=10.0)
+        return self._client
+
+    async def close(self):
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+            self._client = None
 
     # --- Token helpers ------------------------------------------------
 
@@ -130,16 +141,16 @@ class UpstoxClient:
         headers = {"Accept": "application/json", "Authorization": f"Bearer {resolved}"}
 
         try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(url, headers=headers, timeout=10.0)
-                if resp.status_code == 200:
-                    candles = resp.json().get("data", {}).get("candles", [])
-                    return [
-                        {"timestamp": c[0], "open": c[1], "high": c[2], "low": c[3], "close": c[4], "volume": c[5]}
-                        for c in candles
-                    ]
-                else:
-                    logger.warning("Upstox historical API %d: %s", resp.status_code, resp.text[:200])
+            client = await self._get_client()
+            resp = await client.get(url, headers=headers, timeout=10.0)
+            if resp.status_code == 200:
+                candles = resp.json().get("data", {}).get("candles", [])
+                return [
+                    {"timestamp": c[0], "open": c[1], "high": c[2], "low": c[3], "close": c[4], "volume": c[5]}
+                    for c in candles
+                ]
+            else:
+                logger.warning("Upstox historical API %d: %s", resp.status_code, resp.text[:200])
         except Exception as e:
             logger.error("Upstox historical candle error: %s", e)
         return []
@@ -157,14 +168,14 @@ class UpstoxClient:
         params = {"symbol": instruments}
 
         try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(url, headers=headers, params=params, timeout=8.0)
-                if resp.status_code == 200:
-                    return self._normalise_response(resp.json())
-                elif resp.status_code == 401:
-                    logger.warning("Upstox token expired (401)")
-                else:
-                    logger.error("Upstox API %d: %s", resp.status_code, resp.text[:200])
+            client = await self._get_client()
+            resp = await client.get(url, headers=headers, params=params, timeout=8.0)
+            if resp.status_code == 200:
+                return self._normalise_response(resp.json())
+            elif resp.status_code == 401:
+                logger.warning("Upstox token expired (401)")
+            else:
+                logger.error("Upstox API %d: %s", resp.status_code, resp.text[:200])
         except httpx.TimeoutException:
             logger.error("Upstox API timeout for %s", path)
         except Exception as e:
@@ -179,14 +190,14 @@ class UpstoxClient:
         params = {"symbol": instruments, "interval": interval}
 
         try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(url, headers=headers, params=params, timeout=8.0)
-                if resp.status_code == 200:
-                    return self._normalise_response(resp.json())
-                elif resp.status_code == 401:
-                    logger.warning("Upstox token expired (401) for OHLC")
-                else:
-                    logger.error("Upstox OHLC API %d: %s", resp.status_code, resp.text[:200])
+            client = await self._get_client()
+            resp = await client.get(url, headers=headers, params=params, timeout=8.0)
+            if resp.status_code == 200:
+                return self._normalise_response(resp.json())
+            elif resp.status_code == 401:
+                logger.warning("Upstox token expired (401) for OHLC")
+            else:
+                logger.error("Upstox OHLC API %d: %s", resp.status_code, resp.text[:200])
         except httpx.TimeoutException:
             logger.error("Upstox OHLC API timeout")
         except Exception as e:

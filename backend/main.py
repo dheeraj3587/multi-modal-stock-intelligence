@@ -7,7 +7,7 @@ load_dotenv()
 
 import os
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -61,7 +61,7 @@ async def health_check():
         "status": "healthy",
         "service": "stock-intelligence-backend",
         "version": "0.2.0",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "environment": os.getenv("APP_ENV", "development"),
         "last_data_refresh": last_refresh,
     }
@@ -76,3 +76,4 @@ async def root():
         "docs": "/docs",
         "health": "/health"
     }
+

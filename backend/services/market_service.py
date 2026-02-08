@@ -142,10 +142,7 @@ class MarketService:
             return {}
 
         try:
-            loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(
-                None, self._fetch_yfinance_bulk_download, tickers
-            )
+            result = await asyncio.to_thread(self._fetch_yfinance_bulk_download, tickers)
             
             # Transform to Upstox-compatible format
             formatted_data = {}
@@ -298,8 +295,7 @@ class MarketService:
         if interval == "30minute": yf_interval = "30m"
         
         try:
-            loop = asyncio.get_event_loop()
-            hist = await loop.run_in_executor(None, lambda: yf.Ticker(ticker).history(period=f"{days}d", interval=yf_interval))
+            hist = await asyncio.to_thread(lambda: yf.Ticker(ticker).history(period=f"{days}d", interval=yf_interval))
             
             candles = []
             for index, row in hist.iterrows():

@@ -18,7 +18,7 @@ Key schema (all values are JSON strings):
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import redis
@@ -147,7 +147,7 @@ class DataCache:
 
     # Meta - when was the last full refresh?
     def set_last_refresh(self):
-        self.set("cache:meta", {"last_refresh": datetime.utcnow().isoformat()}, ttl=86400)
+        self.set("cache:meta", {"last_refresh": datetime.now(timezone.utc).isoformat()}, ttl=86400)
 
     def get_last_refresh(self) -> Optional[str]:
         meta = self.get("cache:meta")
