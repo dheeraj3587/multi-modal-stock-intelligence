@@ -69,6 +69,11 @@ class UpstoxWebSocketService {
    * @param accessToken  Upstox access token
    */
   async connect(accessToken: string) {
+    // Guard: do not attempt connection without a valid token
+    if (!accessToken || accessToken === 'null' || accessToken === 'undefined') {
+      console.info('[UpstoxWS] No valid Upstox token — skipping WebSocket connection');
+      return;
+    }
     if (this.ws && this.status === 'connected' && this.token === accessToken) return;
     this.token = accessToken;
 
@@ -77,7 +82,7 @@ class UpstoxWebSocketService {
       const root = await loadProtoRoot();
       this.decoderType = root.lookupType('com.upstox.marketdatafeeder.rpc.proto.MarketDataFeed');
     } catch (err) {
-      console.warn('[UpstoxWS] Failed to load proto schema, falling back to JSON parsing', err);
+      console.info('[UpstoxWS] Proto schema unavailable, falling back to JSON parsing');
       this.decoderType = null;
     }
 
@@ -276,6 +281,12 @@ class UpstoxWebSocketService {
 
   private scheduleReconnect() {
     if (!this.token) return;
+    // Cap reconnect attempts to avoid infinite loop flooding the console
+    if (this.reconnectAttempt >= 5) {
+      console.info('[UpstoxWS] Max reconnect attempts reached. Call reconnect() manually or re-authenticate.');
+      this.setStatus('error');
+      return;
+    }
     const delay = Math.min(RECONNECT_BASE_MS * 2 ** this.reconnectAttempt, RECONNECT_MAX_MS);
     this.reconnectAttempt++;
     this.reconnectTimer = setTimeout(() => this.openSocket(), delay);

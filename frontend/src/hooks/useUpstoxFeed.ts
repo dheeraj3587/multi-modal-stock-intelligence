@@ -39,7 +39,10 @@ export function useUpstoxFeed(instrumentKeys: string[]): UseUpstoxFeedReturn {
   // Connect WS when token available
   const connect = useCallback(() => {
     const token = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
-    if (!token) return;
+    if (!token || token === 'null' || token === 'undefined') {
+      // No valid Upstox token — stay disconnected, REST fallback will be used
+      return;
+    }
     upstoxWs.connect(token);
   }, []);
 

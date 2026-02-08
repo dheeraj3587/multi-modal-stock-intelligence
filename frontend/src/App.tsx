@@ -14,6 +14,7 @@ import { SentimentPage } from './pages/SentimentPage';
 import { GrowthLeaderboardPage } from './pages/GrowthLeaderboardPage';
 import { PortfolioPage } from './pages/PortfolioPage';
 import { TradingPage } from './pages/TradingPage';
+import { AIChatPage } from './pages/AIChatPage';
 
 export default function App() {
   return (
@@ -37,6 +38,7 @@ export default function App() {
             <Route path="/growth" element={<GrowthLeaderboardPage />} />
             <Route path="/portfolio" element={<PortfolioPage />} />
             <Route path="/trading" element={<TradingPage />} />
+            <Route path="/chat" element={<AIChatPage />} />
           </Route>
         </Routes>
       </AnimatePresence>

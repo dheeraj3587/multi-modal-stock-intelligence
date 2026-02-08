@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { NavLink, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   BarChart3,
   Search,
@@ -7,6 +7,8 @@ import {
   ChevronDown,
   Menu,
   X,
+  Link2,
+  Check,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { ThemeToggle } from './ThemeToggle';
@@ -17,6 +19,7 @@ const PRIMARY_NAV = [
   { to: '/scorecards', label: 'Scorecards' },
   { to: '/portfolio', label: 'Portfolio' },
   { to: '/trading', label: 'Trade' },
+  { to: '/chat', label: 'AI Chat' },
 ];
 
 const MARKET_NAV = [
@@ -28,7 +31,25 @@ const MARKET_NAV = [
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [marketOpen, setMarketOpen] = useState(false);
+  const [upstoxConnected, setUpstoxConnected] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Check if redirected from Upstox OAuth
+  useEffect(() => {
+    if (searchParams.get('upstox_connected') === 'true') {
+      setUpstoxConnected(true);
+      localStorage.setItem('upstox_connected', 'true');
+      // Clean URL
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (localStorage.getItem('upstox_connected') === 'true') {
+      setUpstoxConnected(true);
+    }
+  }, [searchParams]);
+
+  const handleConnectUpstox = () => {
+    window.location.href = 'http://localhost:8000/auth/upstox/login';
+  };
 
   return (
     <nav className="sticky top-0 z-50 bg-surface-0/90 backdrop-blur-md border-b border-border">
@@ -109,11 +130,23 @@ export function Navbar() {
 
           {/* ── Right: Actions ── */}
           <div className="flex items-center gap-2">
-            {/* Wallet address */}
-            <div className="hidden lg:flex items-center bg-surface-2 px-3 py-1.5 rounded-full text-xs font-medium text-text-secondary">
-              <span className="w-2 h-2 rounded-full bg-warning mr-2" />
-              0xA7F3...0fEa2
-            </div>
+            {/* Upstox Connect Button */}
+            <button
+              onClick={handleConnectUpstox}
+              disabled={upstoxConnected}
+              className={cn(
+                'hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all',
+                upstoxConnected
+                  ? 'bg-green-500/20 text-green-400 cursor-default'
+                  : 'bg-accent hover:bg-accent/80 text-white cursor-pointer'
+              )}
+            >
+              {upstoxConnected ? (
+                <><Check className="h-3.5 w-3.5" /> Connected</>
+              ) : (
+                <><Link2 className="h-3.5 w-3.5" /> Connect Upstox</>
+              )}
+            </button>
 
             {/* Search */}
             <div className="hidden sm:flex items-center gap-2 bg-surface-2 border border-border-subtle rounded-full px-3 py-1.5">
