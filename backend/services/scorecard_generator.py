@@ -70,7 +70,12 @@ def _rate(value: Optional[float], thresholds: List[Tuple[float, int]], default: 
 
 
 def _rate_inverse(value: Optional[float], thresholds: List[Tuple[float, int]], default: int = 5) -> int:
-    """Rate inversely - lower value = higher score (e.g., debt, PE)."""
+    """Rate inversely - lower value = higher score (e.g., debt, PE).
+    
+    Thresholds should be sorted ascending by cutoff. Returns the score for the
+    first cutoff the value is <= to, which naturally gives higher scores for
+    lower values when thresholds are ordered lowest-to-highest with best scores first.
+    """
     if value is None:
         return default
     for cutoff, score in thresholds:

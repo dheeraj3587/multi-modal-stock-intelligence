@@ -9,7 +9,7 @@ Prevents the "404 NOT_FOUND" cascade documented in error analysis:
 
 import logging
 import os
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +130,7 @@ class EmbeddingHealthCheck:
         return is_zero
 
     @staticmethod
-    def validate_embedding_batch(embeddings: List[list]) -> Dict[str, any]:
+    def validate_embedding_batch(embeddings: List[list]) -> Dict[str, Any]:
         """
         Validate a batch of embeddings for poisoning.
         

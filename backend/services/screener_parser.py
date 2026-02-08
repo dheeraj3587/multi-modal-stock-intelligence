@@ -40,40 +40,6 @@ def _get_session() -> requests.Session:
         logger.info("Initialized requests session with retry logic")
     return _session
 
-# Common NSE ticker → Screener.in slug mapping
-TICKER_SLUG_MAP = {
-    "RELIANCE": "RELIANCE",
-    "TCS": "TCS",
-    "HDFCBANK": "HDFCBANK",
-    "INFY": "INFY",
-    "ICICIBANK": "ICICIBANK",
-    "SBIN": "SBIN",
-    "BHARTIARTL": "BHARTIARTL",
-    "ITC": "ITC",
-    "KOTAKBANK": "KOTAKBANK",
-    "LT": "LT",
-    "HINDUNILVR": "HINDUNILVR",
-    "AXISBANK": "AXISBANK",
-    "WIPRO": "WIPRO",
-    "BAJFINANCE": "BAJFINANCE",
-    "MARUTI": "MARUTI",
-    "ASIANPAINT": "ASIANPAINT",
-    "TATAMOTORS": "TATAMOTORS",
-    "SUNPHARMA": "SUNPHARMA",
-    "ULTRACEMCO": "ULTRACEMCO",
-    "TITAN": "TITAN",
-    "NESTLEIND": "NESTLEIND",
-    "POWERGRID": "POWERGRID",
-    "NTPC": "NTPC",
-    "TATASTEEL": "TATASTEEL",
-    "ADANIENT": "ADANIENT",
-    "JSWSTEEL": "JSWSTEEL",
-    "ONGC": "ONGC",
-    "COALINDIA": "COALINDIA",
-    "TECHM": "TECHM",
-    "HCLTECH": "HCLTECH",
-}
-
 # User-Agent to mimic a browser
 HEADERS = {
     "User-Agent": (
@@ -275,7 +241,7 @@ def fetch_screener_page(symbol: str, timeout: int = 10) -> Optional[str]:
     Returns:
         HTML content as string, or None if fetch failed
     """
-    slug = TICKER_SLUG_MAP.get(symbol.upper(), symbol.upper())
+    slug = symbol.upper()
     url = f"{SCREENER_BASE_URL}/{slug}/consolidated/"
     
     logger.info(f"Fetching screener.in page: {url}")

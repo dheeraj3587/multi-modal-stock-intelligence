@@ -96,7 +96,7 @@ async def chat(req: ChatRequest):
     if req.symbol:
         stock_ctx = await asyncio.to_thread(_gather_stock_context, req.symbol)
 
-    history_dicts = [h.dict() for h in (req.history or [])]
+    history_dicts = [h.model_dump() for h in (req.history or [])]
 
     result = await asyncio.to_thread(
         ai_chat_service.chat,

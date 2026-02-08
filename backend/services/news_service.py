@@ -38,6 +38,10 @@ class NewsService:
         self._sentiment_analyzer = None
         self._rag_initialized = False
         self._file_search_rag = None
+        
+        # Locking for deduplication (instance-level to avoid shared state)
+        self.sentiment_locks: set[str] = set()
+        self.sentiment_lock_mutex = asyncio.Lock()
         self._use_managed_rag = os.getenv("USE_GEMINI_FILE_SEARCH", "false").lower() == "true"
 
     def _initialize_rag(self):
@@ -277,10 +281,6 @@ class NewsService:
         }
     
 
-        
-    # Locking for deduplication
-    sentiment_locks: set[str] = set()
-    sentiment_lock_mutex = asyncio.Lock()
 
     def get_sentiment_cached_only(self, symbol: str) -> Dict:
         """

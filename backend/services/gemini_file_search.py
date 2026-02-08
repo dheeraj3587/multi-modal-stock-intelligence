@@ -112,14 +112,21 @@ class GeminiFileSearchRAG:
         if not file_path:
             return None
 
-        if not self._upload_file(store_name, file_path):
-            return None
+        try:
+            if not self._upload_file(store_name, file_path):
+                return None
 
-        self._store_cache[cache_key] = {
-            "store_name": store_name,
-            "timestamp": datetime.now()
-        }
-        return store_name
+            self._store_cache[cache_key] = {
+                "store_name": store_name,
+                "timestamp": datetime.now()
+            }
+            return store_name
+        finally:
+            # Clean up temp file regardless of success/failure
+            try:
+                os.unlink(file_path)
+            except OSError:
+                pass
 
     def _create_store(self, symbol: str) -> Optional[str]:
         try:

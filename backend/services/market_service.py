@@ -193,7 +193,6 @@ class MarketService:
             logger.warning("yf.download() returned empty DataFrame")
             return data_dict
 
-        import pandas as pd
         is_multi = isinstance(df.columns, pd.MultiIndex)
 
         for ticker in tickers:

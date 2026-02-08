@@ -32,7 +32,6 @@ class RSSNewsFetcher:
         self.cache_expiry = timedelta(hours=cache_hours)
         self.user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         self._session = None  # Lazy initialization
-        self._session = None  # Lazy initialization
     
     def _get_session(self) -> requests.Session:
         """Get or create HTTP session with retry logic."""

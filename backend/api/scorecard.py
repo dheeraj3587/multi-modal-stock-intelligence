@@ -232,7 +232,6 @@ async def get_scorecard(
     # Use semaphore to limit concurrent scorecard generations
     async with _semaphore:
         try:
-            loop = asyncio.get_event_loop()
             
             # Force refresh if requested
             if refresh:
@@ -243,7 +242,7 @@ async def get_scorecard(
             # Step 1-2: Fetch/parse fundamentals + store in DB (with timeout)
             try:
                 fundamentals = await asyncio.wait_for(
-                    loop.run_in_executor(_executor, _fetch_and_store, symbol),
+                    asyncio.to_thread(_fetch_and_store, symbol),
                     timeout=30.0  # 30s timeout for fundamentals fetch
                 )
             except asyncio.TimeoutError:
@@ -255,7 +254,7 @@ async def get_scorecard(
             # Step 3: RAG sentiment analysis (parallel with timeout)
             try:
                 sentiment_data = await asyncio.wait_for(
-                    loop.run_in_executor(_executor, _get_sentiment, symbol, company_name),
+                    asyncio.to_thread(_get_sentiment, symbol, company_name),
                     timeout=45.0  # 45s timeout for sentiment (LLM can be slow)
                 )
             except asyncio.TimeoutError:
@@ -281,7 +280,7 @@ async def get_scorecard(
             if include_ai_summary:
                 try:
                     ai_summary = await asyncio.wait_for(
-                        loop.run_in_executor(_executor, generate_ai_summary, scorecard),
+                        asyncio.to_thread(generate_ai_summary, scorecard),
                         timeout=30.0
                     )
                     scorecard["ai_summary"] = ai_summary
@@ -350,12 +349,10 @@ async def refresh_scorecard(symbol: str):
     symbol = symbol.upper()
     
     try:
-        loop = asyncio.get_event_loop()
-        
         from backend.services.screener_parser import fetch_and_parse
         from backend.services.fundamentals_db import fundamentals_db
         
-        parsed = await loop.run_in_executor(_executor, fetch_and_parse, symbol)
+        parsed = await asyncio.to_thread(fetch_and_parse, symbol)
         if not parsed:
             raise HTTPException(status_code=404, detail=f"Could not fetch data for {symbol}")
         
@@ -380,7 +377,6 @@ async def batch_refresh(symbols: List[str] = Query(
     description="List of symbols to refresh",
 )):
     """Batch refresh fundamentals for multiple symbols with throttling."""
-    loop = asyncio.get_event_loop()
     results = {"success": [], "failed": []}
     
     # Process in batches of 5 to avoid overwhelming APIs
@@ -392,11 +388,12 @@ async def batch_refresh(symbols: List[str] = Query(
         # Process batch concurrently
         tasks = []
         for sym in batch:
-            async def fetch_single(symbol):
+            # Use default argument to capture loop variable correctly
+            async def fetch_single(symbol=sym):
                 async with _semaphore:
                     try:
                         fundamentals = await asyncio.wait_for(
-                            loop.run_in_executor(_executor, _fetch_and_store, symbol.upper()),
+                            asyncio.to_thread(_fetch_and_store, symbol.upper()),
                             timeout=30.0
                         )
                         return {"status": "success", "symbol": symbol.upper()}
@@ -405,7 +402,7 @@ async def batch_refresh(symbols: List[str] = Query(
                     except Exception as e:
                         return {"status": "failed", "symbol": symbol.upper(), "error": str(e)}
             
-            tasks.append(fetch_single(sym))
+            tasks.append(fetch_single())
         
         # Wait for batch to complete
         batch_results = await asyncio.gather(*tasks, return_exceptions=True)

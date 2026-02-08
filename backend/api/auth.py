@@ -3,13 +3,13 @@ Authentication API - signup, login (JWT), and Upstox OAuth helpers.
 Passwords are hashed with bcrypt; JWTs are used for session management.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import os
 import requests
 import logging
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, HTTPException, Depends, Request, Header
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
@@ -61,21 +61,10 @@ class UserProfile(BaseModel):
 # --- Helper - get current user from JWT ------------------------------
 
 def get_current_user(
-    authorization: Optional[str] = Depends(lambda authorization=None: authorization),
-    db: Session = Depends(get_db),
-) -> User:
-    """Extract and validate JWT from the Authorization header."""
-    # FastAPI Header dependency
-    from fastapi import Header
-    raise HTTPException(status_code=401, detail="Not implemented inline")
-
-
-from fastapi import Header
-
-def _current_user(
     authorization: Optional[str] = Header(None),
     db: Session = Depends(get_db),
 ) -> User:
+    """Extract and validate JWT from the Authorization header."""
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
     token = authorization[7:]
@@ -136,7 +125,7 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
 # --- Profile ----------------------------------------------------------
 
 @router.get("/profile", response_model=UserProfile)
-def get_profile(user: User = Depends(_current_user)):
+def get_profile(user: User = Depends(get_current_user)):
     """Return the authenticated user's profile."""
     return UserProfile(
         email=user.email,
@@ -201,7 +190,7 @@ def upstox_callback(code: str, request: Request, db: Session = Depends(get_db)):
             user = db.query(User).filter(User.id == payload.get("sub")).first()
             if user:
                 user.upstox_access_token = access_token
-                user.upstox_token_expiry = datetime.utcnow().replace(hour=22, minute=0, second=0)
+                user.upstox_token_expiry = datetime.now(timezone.utc).replace(hour=22, minute=0, second=0)
                 db.commit()
                 logger.info(f"Stored Upstox token for user {user.email}")
 

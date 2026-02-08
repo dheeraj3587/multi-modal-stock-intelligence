@@ -8,7 +8,7 @@ import os
 import json
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -41,9 +41,9 @@ class ModelInferenceService:
             models_dir: Directory containing model checkpoints
         """
         self.models_dir = Path(models_dir) if models_dir else Path(__file__).parent.parent.parent.parent / "data" / "models"
-        self.models: Dict[str, any] = {}
+        self.models: Dict[str, Any] = {}
         self.model_metadata: Dict[str, Dict] = {}
-        self.scalers: Dict[str, any] = {}
+        self.scalers: Dict[str, Any] = {}
         
         if TORCH_AVAILABLE:
             self._load_models()

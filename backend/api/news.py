@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from backend.services.news_service import news_service
 from backend.services.sentiment_analyzer import analyzer
 from backend.services.data_cache import data_cache
+import asyncio
 import logging
 
 router = APIRouter()
@@ -75,8 +76,8 @@ async def get_stock_sentiment(symbol: str, company_name: Optional[str] = None):
     if articles:
         data_cache.set_news(clean_symbol, articles, ttl=1800)
 
-    # Get RAG-powered sentiment analysis
-    sentiment_result = news_service.get_sentiment(clean_symbol, company_name or clean_symbol)
+    # Get RAG-powered sentiment analysis (run in thread to avoid blocking event loop)
+    sentiment_result = await asyncio.to_thread(news_service.get_sentiment, clean_symbol, company_name or clean_symbol)
     
     processed_news = []
     

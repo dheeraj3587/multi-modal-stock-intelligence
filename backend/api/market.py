@@ -516,15 +516,17 @@ async def get_stock_analysis(
                 asyncio.to_thread(news_service.get_company_news, symbol, company_name),
                 timeout=5.0
             )
-            recent_news = [
-                {
-                    "title": a.get("title", ""),
+            recent_news = []
+            for a in articles[:5]:
+                title = a.get("title", "")
+                score = analyzer.get_sentiment(title)
+                sentiment = "bullish" if score > 0.1 else ("bearish" if score < -0.1 else "neutral")
+                recent_news.append({
+                    "title": title,
                     "source": a.get("source", ""),
                     "published": a.get("published_at", ""),
-                    "sentiment": "bullish" if analyzer.get_sentiment(a.get("title", "")) > 0.1 else ("bearish" if analyzer.get_sentiment(a.get("title", "")) < -0.1 else "neutral")
-                }
-                for a in articles[:5]
-            ]
+                    "sentiment": sentiment
+                })
         except Exception as e:
             logger.warning(f"News fetch failed for {symbol}: {e}")
             recent_news = []
