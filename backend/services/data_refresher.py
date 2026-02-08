@@ -224,12 +224,11 @@ async def refresh_fundamentals_cache():
     logger.info(f"[Scheduler] Refreshing fundamentals for {len(symbols)} stocks …")
     t0 = time.monotonic()
 
-    loop = asyncio.get_event_loop()
     batch_size = 10
     for i in range(0, len(symbols), batch_size):
         batch = symbols[i:i + batch_size]
         tasks = [
-            loop.run_in_executor(_refresh_executor, _refresh_single_fundamental, sym)
+            asyncio.to_thread(_refresh_single_fundamental, sym)
             for sym in batch
         ]
         await asyncio.gather(*tasks, return_exceptions=True)
@@ -259,13 +258,12 @@ async def refresh_news_cache():
     logger.info(f"[Scheduler] Refreshing news for {len(all_stocks)} stocks …")
     t0 = time.monotonic()
 
-    loop = asyncio.get_event_loop()
     batch_size = 10
     for i in range(0, len(all_stocks), batch_size):
         batch = all_stocks[i:i + batch_size]
         tasks = [
-            loop.run_in_executor(
-                _refresh_executor, _refresh_single_news,
+            asyncio.to_thread(
+                _refresh_single_news,
                 stock["symbol"], stock["name"],
             )
             for stock in batch
@@ -310,13 +308,12 @@ async def refresh_scorecards_cache():
     logger.info(f"[Scheduler] Refreshing scorecards for {len(symbols)} stocks …")
     t0 = time.monotonic()
 
-    loop = asyncio.get_event_loop()
     scorecard_list = []
     batch_size = 20
     for i in range(0, len(symbols), batch_size):
         batch = symbols[i:i + batch_size]
         tasks = [
-            loop.run_in_executor(_refresh_executor, _refresh_single_scorecard, sym)
+            asyncio.to_thread(_refresh_single_scorecard, sym)
             for sym in batch
         ]
         await asyncio.gather(*tasks, return_exceptions=True)
@@ -451,12 +448,11 @@ async def refresh_analysis_cache():
     logger.info(f"[Scheduler] Refreshing analysis for {len(symbols)} stocks …")
     t0 = time.monotonic()
 
-    loop = asyncio.get_event_loop()
     batch_size = 20
     for i in range(0, len(symbols), batch_size):
         batch = symbols[i:i + batch_size]
         tasks = [
-            loop.run_in_executor(_refresh_executor, _refresh_single_analysis, sym, quotes)
+            asyncio.to_thread(_refresh_single_analysis, sym, quotes)
             for sym in batch
         ]
         await asyncio.gather(*tasks, return_exceptions=True)

@@ -230,15 +230,12 @@ async def _warmup_fundamentals():
     logger.info(f"[Warmup] Pre-fetching fundamentals for {len(symbols)} stocks …")
     t0 = time.monotonic()
 
-    loop = asyncio.get_event_loop()
-
-    # Process in batches of 10 to avoid overwhelming yfinance
     batch_size = 10
     fetched = 0
     for i in range(0, len(symbols), batch_size):
         batch = symbols[i:i + batch_size]
         tasks = [
-            loop.run_in_executor(_warmup_executor, _fetch_single_fundamental, sym)
+            asyncio.to_thread(_fetch_single_fundamental, sym)
             for sym in batch
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -279,16 +276,13 @@ async def _warmup_news():
     logger.info(f"[Warmup] Pre-fetching news for {len(all_stocks)} stocks …")
     t0 = time.monotonic()
 
-    loop = asyncio.get_event_loop()
     fetched = 0
 
-    # Process in batches of 10
     batch_size = 10
     for i in range(0, len(all_stocks), batch_size):
         batch = all_stocks[i:i + batch_size]
         tasks = [
-            loop.run_in_executor(
-                _warmup_executor,
+            asyncio.to_thread(
                 _fetch_single_news,
                 stock["symbol"],
                 stock["name"],
@@ -353,7 +347,6 @@ async def _warmup_scorecards():
     logger.info(f"[Warmup] Generating scorecards for {len(symbols_with_data)} stocks …")
     t0 = time.monotonic()
 
-    loop = asyncio.get_event_loop()
     generated = 0
     scorecard_list = []
 
@@ -361,7 +354,7 @@ async def _warmup_scorecards():
     for i in range(0, len(symbols_with_data), batch_size):
         batch = symbols_with_data[i:i + batch_size]
         tasks = [
-            loop.run_in_executor(_warmup_executor, _generate_single_scorecard, sym)
+            asyncio.to_thread(_generate_single_scorecard, sym)
             for sym in batch
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -515,14 +508,13 @@ async def _warmup_analysis(quotes: Dict):
     logger.info(f"[Warmup] Building analysis payloads for {len(symbols)} stocks …")
     t0 = time.monotonic()
 
-    loop = asyncio.get_event_loop()
     built = 0
 
     batch_size = 20
     for i in range(0, len(symbols), batch_size):
         batch = symbols[i:i + batch_size]
         tasks = [
-            loop.run_in_executor(_warmup_executor, _build_single_analysis, sym, quotes)
+            asyncio.to_thread(_build_single_analysis, sym, quotes)
             for sym in batch
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)

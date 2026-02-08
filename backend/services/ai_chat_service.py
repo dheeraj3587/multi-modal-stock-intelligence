@@ -15,7 +15,7 @@ import json
 import hashlib
 import logging
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 from backend.services.redis_cache import redis_cache
@@ -120,10 +120,10 @@ class AIChatService:
                 "cached": False,
                 "model": "none",
                 "deep": deep,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
-        # ── 1. Check cache (only standalone questions – no history)
+        # ── 1. Check cache(only standalone questions – no history)
         ttl = DEEP_CACHE_TTL if deep else CHAT_CACHE_TTL
         ck = _cache_key(message, symbol, deep)
         if not history:
@@ -154,7 +154,7 @@ class AIChatService:
                 "cached": False,
                 "model": f"{self._model_type}:{self._model_name}",
                 "deep": deep,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
         result = {
@@ -162,10 +162,10 @@ class AIChatService:
             "cached": False,
             "model": f"{self._model_type}:{self._model_name}",
             "deep": deep,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
-        # ── 4. Cache standalone answers ───────────────────
+        # ── 4. Cache standalone answers───────────────────
         if not history:
             r = _get_redis()
             if r:
