@@ -19,23 +19,42 @@ import { CompanyLogo } from '../components/shared/CompanyLogo';
 /* ── Animations ── */
 const stagger = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.05 } },
+  show: { transition: { staggerChildren: 0.06 } },
 };
 const fadeUp = {
-  hidden: { opacity: 0, y: 10 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.25 } },
+  hidden: { opacity: 0, y: 14, filter: 'blur(4px)' },
+  show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] } },
 };
+
+function pricesToSvgPath(prices: number[], w: number, h: number, pad = 10): string {
+  if (prices.length < 2) return '';
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  const range = max - min || 1;
+  return prices
+    .map((p, i) => {
+      const x = (i / (prices.length - 1)) * w;
+      const y = pad + ((max - p) / range) * (h - pad * 2);
+      return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(' ');
+}
 
 const TIMEFRAMES = ['1h', '1d', '1w', '1m', '1y'] as const;
 
-/* ── Mini SVG sparkline helper ── */
-function Sparkline({ positive }: { positive: boolean }) {
-  const path = positive
-    ? 'M0,30 C8,28 16,20 24,22 C32,24 40,12 48,14 C56,16 64,8 72,6 C80,4 88,8 96,2'
-    : 'M0,6 C8,10 16,8 24,14 C32,20 40,16 48,22 C56,26 64,24 72,28 C80,26 88,30 96,32';
+function Sparkline({ positive, prices }: { positive: boolean; prices?: number[] }) {
+  const pts = prices && prices.length >= 2 ? prices : (positive ? [10, 12, 11, 15, 14, 18, 20, 22] : [22, 20, 21, 18, 19, 15, 14, 12]);
+  const min = Math.min(...pts);
+  const max = Math.max(...pts);
+  const range = max - min || 1;
+  const path = pts.map((v, i) => {
+    const x = (i / (pts.length - 1)) * 96;
+    const y = 2 + ((max - v) / range) * 32;
+    return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
   return (
     <svg viewBox="0 0 96 36" fill="none" className="w-full h-full">
-      <path d={path} stroke={positive ? '#22c55e' : '#ef4444'} strokeWidth="2" strokeLinecap="round" />
+      <path d={path} stroke={positive ? '#22c55e' : '#ef4444'} strokeWidth="2" strokeLinecap="round" className="animate-draw-line" />
     </svg>
   );
 }
@@ -130,8 +149,23 @@ export function DashboardPage() {
     ];
   }, [indices, avgChange, totalMarketValue]);
 
-  /* background bars for chart area */
-  const bars = useMemo(() => Array.from({ length: 40 }, () => Math.floor(Math.random() * 70) + 15), []);
+  const chartPaths = useMemo(() => {
+    if (!stocks || stocks.length < 2) return { primary: '', secondary: '' };
+    const sorted = [...stocks].sort((a, b) => b.price - a.price);
+    const p1 = sorted.slice(0, Math.ceil(sorted.length / 2)).map((s) => s.price);
+    const p2 = sorted.slice(Math.ceil(sorted.length / 2)).map((s) => s.price);
+    return { primary: pricesToSvgPath(p1, 1200, 260), secondary: pricesToSvgPath(p2, 1200, 260) };
+  }, [stocks]);
+
+  const bars = useMemo(() => {
+    if (!stocks || stocks.length === 0) return Array.from({ length: 40 }, () => Math.floor(Math.random() * 70) + 15);
+    const result: number[] = [];
+    for (let i = 0; i < 40; i++) {
+      const s = stocks[i % stocks.length];
+      result.push(Math.max(10, Math.min(90, 50 + s.changePercent * 5)));
+    }
+    return result;
+  }, [stocks]);
 
   /* ── Risk percentages ── */
   const highRiskPct = useMemo(() => {
@@ -258,18 +292,22 @@ export function DashboardPage() {
                 </motion.div>
               )}
 
-              {/* SVG lines */}
               <svg className="absolute inset-0 w-full h-full z-20 overflow-visible" preserveAspectRatio="none">
-                {/* Yellow trend line */}
-                <path
-                  d="M0,200 C40,195 80,180 120,185 C160,190 200,160 240,150 C280,140 320,155 360,140 C400,125 440,135 480,120 C520,105 560,115 600,100 C640,85 680,100 720,90 C760,80 800,70 840,60 C880,50 920,55 960,40 L1200,30"
-                  fill="none" stroke="#FBBF24" strokeWidth="2.5" vectorEffect="non-scaling-stroke"
-                />
-                {/* White secondary line */}
-                <path
-                  d="M0,160 C40,170 80,150 120,160 C160,170 200,155 240,165 C280,175 320,160 360,170 C400,165 440,175 480,170 C520,160 560,170 600,180 C640,175 680,165 720,175 C760,180 800,170 840,165 C880,170 920,175 960,180 L1200,185"
-                  fill="none" stroke="white" strokeWidth="2" opacity="0.5" vectorEffect="non-scaling-stroke"
-                />
+                <defs>
+                  <linearGradient id="dashAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#FBBF24" stopOpacity="0.12" />
+                    <stop offset="100%" stopColor="#FBBF24" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                {chartPaths.primary && (
+                  <>
+                    <path d={chartPaths.primary} fill="none" stroke="#FBBF24" strokeWidth="2.5" vectorEffect="non-scaling-stroke" className="animate-draw-line" />
+                    <path d={`${chartPaths.primary} L1200,260 L0,260 Z`} fill="url(#dashAreaGrad)" className="animate-fade-in-up" />
+                  </>
+                )}
+                {chartPaths.secondary && (
+                  <path d={chartPaths.secondary} fill="none" stroke="white" strokeWidth="2" opacity="0.5" vectorEffect="non-scaling-stroke" className="animate-draw-line" />
+                )}
               </svg>
 
               {/* Bars */}

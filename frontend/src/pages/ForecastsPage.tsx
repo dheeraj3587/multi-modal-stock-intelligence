@@ -160,7 +160,7 @@ export function ForecastsPage() {
     return topStocks.map((stock) => {
       const a = analyses.get(stock.symbol);
       const action: 'buy' | 'sell' | 'hold' = a
-        ? a.recommendation
+        ? (a.recommendation as 'buy' | 'sell' | 'hold')
         : stock.changePercent > 1 ? 'buy' : stock.changePercent < -1 ? 'sell' : 'hold';
       const conf = (a?.forecastConfidence ?? stock.forecastConfidence) * 100;
       const status: ForecastSetup['status'] = conf >= 70 ? 'confirmed' : conf >= 40 ? 'pending' : 'failed';

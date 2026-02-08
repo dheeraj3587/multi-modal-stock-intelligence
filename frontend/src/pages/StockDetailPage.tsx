@@ -227,18 +227,18 @@ export function StockDetailPage() {
                     </div>
                   )}
                   <div className="grid grid-cols-2 gap-4 pt-2">
-                    {fundamentals.pros?.length > 0 && (
+                    {(fundamentals.pros?.length ?? 0) > 0 && (
                       <div>
                         <div className="text-xs font-medium text-positive mb-1">Strengths</div>
-                        {fundamentals.pros.slice(0, 3).map((p, i) => (
+                        {fundamentals.pros!.slice(0, 3).map((p, i) => (
                           <div key={i} className="text-[11px] text-text-secondary leading-relaxed mb-1">+ {p}</div>
                         ))}
                       </div>
                     )}
-                    {fundamentals.cons?.length > 0 && (
+                    {(fundamentals.cons?.length ?? 0) > 0 && (
                       <div>
                         <div className="text-xs font-medium text-negative mb-1">Weaknesses</div>
-                        {fundamentals.cons.slice(0, 3).map((c, i) => (
+                        {fundamentals.cons!.slice(0, 3).map((c, i) => (
                           <div key={i} className="text-[11px] text-text-secondary leading-relaxed mb-1">- {c}</div>
                         ))}
                       </div>

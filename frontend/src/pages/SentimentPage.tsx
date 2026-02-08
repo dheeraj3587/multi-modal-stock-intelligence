@@ -2,23 +2,22 @@ import { useState, useMemo } from 'react';
 import { useApi } from '../hooks/useApi';
 import { api } from '../lib/api';
 import { CompanyLogo } from '../components/shared/CompanyLogo';
+import { PageTransition } from '../components/shared/PageTransition';
 import { cn, formatCompactNumber, formatCurrency, formatPercent } from '../lib/utils';
-import { 
-  ArrowUp, 
-  ArrowDown, 
-  ArrowRight, 
-  RefreshCcw, 
-  Plus, 
-  SlidersHorizontal, 
-  LayoutGrid, 
-  FileText,   
+import {
+  ArrowUp,
+  ArrowDown,
+  ArrowRight,
+  RefreshCcw,
+  Plus,
+  SlidersHorizontal,
+  LayoutGrid,
+  FileText,
   MessageSquare,
   Globe
 } from 'lucide-react';
 import { Skeleton } from '../components/ui/Skeleton';
 
-// Additional icons if needed can be mapped or imported
-// Replicating the HTML structure
 
 export function SentimentPage() {
     const {
@@ -216,7 +215,8 @@ export function SentimentPage() {
   }
 
   return (
-    <div className="font-sans text-gray-900 dark:text-gray-100 min-h-screen">
+    <PageTransition>
+    <div className="font-sans text-text-primary min-h-screen">
         {/* Main Content Grid */}
         <main className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
@@ -498,5 +498,6 @@ export function SentimentPage() {
             </div>
         </main>
     </div>
+    </PageTransition>
   );
 }
