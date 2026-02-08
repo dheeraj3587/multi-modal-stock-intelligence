@@ -328,14 +328,17 @@ class FundamentalsDB:
         """Convert a database row to a structured dict."""
         d = dict(row)
         
-        # Parse JSON fields back
+        # Parse JSON fields back — ensure None is replaced with empty list
         for json_field in ["pros", "cons", "quarterly_results", "profit_loss", 
                           "balance_sheet", "cash_flow", "shareholding", "peers"]:
-            if d.get(json_field):
+            raw = d.get(json_field)
+            if raw and isinstance(raw, str):
                 try:
-                    d[json_field] = json.loads(d[json_field])
+                    d[json_field] = json.loads(raw)
                 except json.JSONDecodeError:
                     d[json_field] = []
+            elif not raw:
+                d[json_field] = []
         
         # Build ratios sub-dict for compatibility
         d["ratios"] = {

@@ -117,6 +117,34 @@ class DataCache:
     def get_fundamentals(self, symbol: str) -> Optional[Dict]:
         return self.get(f"cache:fundamentals:{symbol}")
 
+    # Scorecard per symbol
+    def set_scorecard(self, symbol: str, data: Dict, ttl: int = 3600):
+        self.set(f"cache:scorecard:{symbol}", data, ttl)
+
+    def get_scorecard(self, symbol: str) -> Optional[Dict]:
+        return self.get(f"cache:scorecard:{symbol}")
+
+    # Scorecard list (all companies summary)
+    def set_scorecard_list(self, data: List[Dict], ttl: int = 3600):
+        self.set("cache:scorecard_list", data, ttl)
+
+    def get_scorecard_list(self) -> List[Dict]:
+        return self.get("cache:scorecard_list") or []
+
+    # News articles per symbol
+    def set_news(self, symbol: str, data: List[Dict], ttl: int = 1800):
+        self.set(f"cache:news:{symbol}", data, ttl)
+
+    def get_news(self, symbol: str) -> List[Dict]:
+        return self.get(f"cache:news:{symbol}") or []
+
+    # Stock analysis per symbol
+    def set_analysis(self, symbol: str, data: Dict, ttl: int = 600):
+        self.set(f"cache:analysis:{symbol}", data, ttl)
+
+    def get_analysis(self, symbol: str) -> Optional[Dict]:
+        return self.get(f"cache:analysis:{symbol}")
+
     # Meta - when was the last full refresh?
     def set_last_refresh(self):
         self.set("cache:meta", {"last_refresh": datetime.utcnow().isoformat()}, ttl=86400)

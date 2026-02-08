@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 import logging
 
-# Import new RAG-based services
+# RAG-based news and sentiment services
 from backend.services.rss_news_fetcher import rss_fetcher
 from backend.services.vector_store import create_vector_store
 from backend.services.rag_sentiment_analyzer import create_sentiment_analyzer
@@ -13,17 +13,12 @@ from backend.services.gemini_file_search import GeminiFileSearchRAG
 from backend.services.model_validator import ModelValidator
 from backend.services.redis_cache import redis_cache
 
-# Configure logger
 logger = logging.getLogger(__name__)
+
 
 class NewsService:
     def __init__(self, use_rag: bool = True):
-        """
-        Initialize news service.
-        
-        Args:
-            use_rag: If True, use RSS + RAG pipeline. If False, use legacy NewsAPI.
-        """
+        """Initialize news service with optional RAG pipeline."""
         self.use_rag = use_rag
         
         # Legacy NewsAPI setup (fallback)
@@ -186,16 +181,7 @@ class NewsService:
             return []
     
     def get_sentiment(self, symbol: str, company_name: str = "") -> Dict:
-        """
-        Get AI-powered sentiment analysis for a company using RAG.
-        
-        Args:
-            symbol: Stock symbol
-            company_name: Company name
-            
-        Returns:
-            Sentiment analysis dict with score, confidence, reasoning, etc.
-        """
+        """Get AI-powered sentiment analysis for a company using RAG."""
         if not self.use_rag:
             # Fallback to simple sentiment
             from backend.services.sentiment_analyzer import analyzer
@@ -355,9 +341,8 @@ class NewsService:
                     company_name, symbol, articles
                 )
                 
-                # 3. Update Cache
-                cache_key = f"sentiment_{symbol}"
-                self.cache[cache_key] = (result, datetime.now())
+                # 3. Update Cache (both Redis and in-memory)
+                self.update_sentiment_cache(symbol, result)
                 logger.info(f"Updated background sentiment for {symbol}")
                 
         except Exception as e:
@@ -400,16 +385,29 @@ class NewsService:
                         articles_map
                     )
                     
-                    # 3. Update Cache
+                    # 3. Update Cache (both Redis and in-memory)
                     for sym, res in results.items():
-                        cache_key = f"sentiment_{sym}"
-                        self.cache[cache_key] = (res, datetime.now())
+                        self.update_sentiment_cache(sym, res)
                         
                     logger.info(f"Updated batch sentiment for {len(chunk)} stocks")
                 except Exception as e:
                     logger.error(f"Batch analysis chunk failed: {e}")
                     
         logger.info("Sentiment refresh cycle completed")
+
+        # 4. Rebuild derived caches so dashboard picks up real AI sentiments
+        try:
+            from backend.services.data_refresher import (
+                refresh_stocks_with_sentiment,
+                refresh_leaderboard,
+                refresh_analysis_cache,
+            )
+            await refresh_stocks_with_sentiment()
+            await refresh_leaderboard()
+            await refresh_analysis_cache()
+            logger.info("Derived caches (stocks_sentiment, leaderboard, analysis) rebuilt after sentiment refresh")
+        except Exception as e:
+            logger.error(f"Failed to rebuild derived caches after sentiment refresh: {e}")
 
     def get_batch_sentiment(self, stocks: List[Dict]) -> Dict[str, Dict]:
         """

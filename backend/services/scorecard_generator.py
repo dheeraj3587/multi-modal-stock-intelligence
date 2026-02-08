@@ -396,9 +396,9 @@ def generate_scorecard(
         overall_verdict = "Sell"
         overall_badge = "poor"
     
-    # Build pros/cons summary
-    pros = fundamentals.get("pros", [])
-    cons = fundamentals.get("cons", [])
+    # Build pros/cons summary (guard against None values from DB)
+    pros = fundamentals.get("pros") or []
+    cons = fundamentals.get("cons") or []
     
     # Identify strongest and weakest categories
     sorted_cats = sorted(categories.items(), key=lambda x: x[1]["score"], reverse=True)
@@ -449,7 +449,7 @@ def generate_scorecard(
         "weaknesses": weaknesses,
         
         # Peer comparison
-        "peers": fundamentals.get("peers", [])[:5],
+        "peers": (fundamentals.get("peers") or [])[:5],
         
         # News summary
         "news_summary": {

@@ -6,12 +6,19 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import os
+import logging
 from datetime import datetime
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+# Configure root logger so warmup / scheduler messages appear in docker logs
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+
 # Initialize FastAPI application
-from backend.api import auth, news, market, scorecard
+from backend.api import auth, news, market, scorecard, chat
 
 # Database
 from backend.db.session import init_db
@@ -28,6 +35,7 @@ app.include_router(auth.router)
 app.include_router(news.router)
 app.include_router(market.router)
 app.include_router(scorecard.router)
+app.include_router(chat.router)
 
 # CORS Configuration
 CORS_ORIGINS = os.getenv("BACKEND_CORS_ORIGINS", '["http://localhost:3000"]')
@@ -71,7 +79,8 @@ async def root():
 from backend.services.scheduler_service import scheduler_service
 from backend.services.news_service import news_service
 from backend.services.market_service import market_service
-from backend.services.data_refresher import refresh_all, run_refresh_sync
+from backend.services.data_refresher import refresh_all, run_refresh_sync, run_heavy_refresh_sync
+from backend.services.cache_warmup import warmup_all_caches
 import asyncio
 import logging
 
@@ -93,6 +102,10 @@ async def startup_event():
 
     # ── Start APScheduler ─────────────────────────────────────────
     scheduler_service.start()
+
+    # ── Warm up ALL Redis caches (blocks until done) ──────────────
+    #    This ensures every UI endpoint returns real data right away.
+    await warmup_all_caches()
 
     all_stocks = market_service.get_all_stocks()
 
@@ -125,11 +138,21 @@ async def startup_event():
         replace_existing=True,
     )
 
-    # Trigger immediate data refresh (non-blocking)
-    asyncio.create_task(refresh_all())
+    # ── Heavy refresh every 60 minutes (fundamentals + scorecards) ──
+    scheduler_service.add_job(
+        run_heavy_refresh_sync,
+        "interval",
+        minutes=60,
+        id="heavy_data_refresh",
+        replace_existing=True,
+    )
+
+    # (warmup_all_caches already pre-populated quotes, indices, leaderboard)
+    # The scheduler will keep them fresh from here on.
 
     print("🚀 Sentiment scheduler initialised (30 min interval)")
     print("📊 Full data refresh scheduled (5 min interval)")
+    print("🏗️  Heavy data refresh scheduled (60 min interval)")
     print(f"📝 API Documentation: http://localhost:8000/docs")
     print(f"💚 Health Check: http://localhost:8000/health")
 

@@ -204,9 +204,20 @@ async def get_scorecard(
     """
     Generate a Tickertape-style AI scorecard for a stock.
     
-    Pipeline: Screener.in (HTML) → Parser → JSON → DB → RAG (news + fundamentals) → AI Scorecard
+    Pipeline: Cache-first → Screener.in (HTML) → Parser → JSON → DB → RAG (news + fundamentals) → AI Scorecard
     """
     symbol = symbol.upper()
+
+    # 0. Try pre-built cache (unless forced refresh)
+    if not refresh:
+        from backend.services.data_cache import data_cache
+        cached = data_cache.get_scorecard(symbol)
+        if cached:
+            # Optionally add AI summary if requested and missing
+            if include_ai_summary and not cached.get("ai_summary"):
+                pass  # Fall through to generate it
+            else:
+                return cached
     
     # Check for recent duplicate request (debounce)
     now = time.time()
@@ -281,6 +292,10 @@ async def get_scorecard(
                     logger.error(f"AI summary generation failed for {symbol}: {e}")
                     scorecard["ai_summary"] = f"AI summary unavailable: {str(e)}"
             
+            # Cache the scorecard for future requests
+            from backend.services.data_cache import data_cache
+            data_cache.set_scorecard(symbol, scorecard, ttl=3600)
+
             return scorecard
             
         except ValueError as e:
@@ -294,7 +309,15 @@ async def get_scorecard(
 
 @router.get("/", response_model=List[ScorecardListItem])
 async def list_scorecards():
-    """List all stored companies with their latest scores."""
+    """List all stored companies with their latest scores — cache-first."""
+    from backend.services.data_cache import data_cache
+
+    # Try pre-built cache
+    cached = data_cache.get_scorecard_list()
+    if cached:
+        return [ScorecardListItem(**item) for item in cached]
+
+    # Fallback: compute inline
     from backend.services.fundamentals_db import fundamentals_db
     from backend.services.scorecard_generator import generate_scorecard
     

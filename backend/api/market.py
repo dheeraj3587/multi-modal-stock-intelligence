@@ -76,6 +76,38 @@ class LeaderboardStock(BaseModel):
     forecastPercent: float
 
 
+class RefreshResponse(BaseModel):
+    status: str
+    message: str
+    refreshed_at: str
+
+
+@router.post("/refresh-cache", response_model=RefreshResponse)
+async def refresh_all_caches():
+    """
+    Manually trigger a full cache refresh.
+    Refreshes: quotes, indices, sentiments, news, analysis, and leaderboard.
+    """
+    from datetime import datetime
+    from backend.services.data_refresher import refresh_all
+    from backend.services.cache_warmup import warmup_all_caches
+    
+    logger.info("Manual cache refresh triggered via API")
+    
+    try:
+        # Run full warmup (includes all data)
+        await warmup_all_caches()
+        
+        return RefreshResponse(
+            status="success",
+            message="All caches refreshed successfully",
+            refreshed_at=datetime.now().isoformat()
+        )
+    except Exception as e:
+        logger.error(f"Cache refresh failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Cache refresh failed: {str(e)}")
+
+
 @router.get("/stocks", response_model=List[dict])
 async def get_all_stocks():
     """Get list of all supported stocks"""
@@ -420,7 +452,15 @@ async def get_stock_analysis(
     symbol: str,
     access_token: Optional[str] = Depends(get_access_token),
 ):
-    """Get comprehensive AI analysis for a specific stock"""
+    """Get comprehensive AI analysis for a specific stock — cache-first."""
+    symbol = symbol.upper()
+
+    # 1. Try pre-built cache
+    cached = data_cache.get_analysis(symbol)
+    if cached:
+        return cached
+
+    # 2. Fallback to live computation
     try:
         # Get basic stock info
         stock_info = market_service.get_stock_info(symbol)
@@ -557,7 +597,7 @@ async def get_stock_analysis(
                 recommendation = "hold"
             forecast_confidence = sentiment_confidence * 100
         
-        return {
+        result = {
             "symbol": symbol,
             "name": company_name,
             "sector": stock_info.get("sector", "Unknown"),
@@ -580,6 +620,10 @@ async def get_stock_analysis(
             "recentNews": recent_news,
             "newsCount": len(recent_news)
         }
+
+        # Cache the result for future requests
+        data_cache.set_analysis(symbol, result, ttl=600)
+        return result
     
     except HTTPException:
         raise
@@ -593,7 +637,14 @@ async def get_fundamental_analysis(
     symbol: str,
     service: ScreenerService = Depends(get_screener_service),
 ):
-    """Get fundamental analysis from Screener.in with Yahoo Finance fallback"""
+    """Get fundamental analysis — cache-first, then Screener.in / Yahoo Finance."""
+    symbol = symbol.upper()
+
+    # 0. Try pre-built cache
+    cached = data_cache.get_fundamentals(symbol)
+    if cached:
+        return cached
+
     # 1. Try Screener.in first
     try:
         # Get company name
@@ -603,6 +654,7 @@ async def get_fundamental_analysis(
         data = await asyncio.to_thread(service.get_company_details, symbol, company_name)
         
         if data:
+            data_cache.set_fundamentals(symbol, data, ttl=3600)
             return data
             
     except Exception as e:
@@ -614,6 +666,7 @@ async def get_fundamental_analysis(
         fallback_data = await asyncio.to_thread(market_service.get_fundamental_info, symbol)
         
         if fallback_data:
+            data_cache.set_fundamentals(symbol, fallback_data, ttl=3600)
             return fallback_data
             
         raise HTTPException(status_code=404, detail="Fundamental data not found on Screener.in or Yahoo Finance")

@@ -163,18 +163,11 @@ def upstox_login():
 
 @router.get("/upstox/callback")
 def upstox_callback(code: str, request: Request, db: Session = Depends(get_db)):
-    """
-    Exchange Upstox authorization code for an access token.
-    If called from a browser navigation, redirect to the frontend with the token.
-    """
-    sec_fetch_mode = request.headers.get("sec-fetch-mode", "")
-    sec_fetch_dest = request.headers.get("sec-fetch-dest", "")
-    if sec_fetch_mode == "navigate" or sec_fetch_dest == "document":
-        return RedirectResponse(f"{FRONTEND_BASE_URL}/auth/callback?code={code}")
-
+    """Exchange Upstox authorization code for access token, then redirect to frontend."""
     if not UPSTOX_API_KEY or not UPSTOX_API_SECRET:
         raise HTTPException(status_code=500, detail="Upstox credentials not configured")
 
+    # Exchange code for token FIRST
     token_url = "https://api.upstox.com/v2/login/authorization/token"
     headers = {"accept": "application/json", "Content-Type": "application/x-www-form-urlencoded"}
     data = {
@@ -187,29 +180,36 @@ def upstox_callback(code: str, request: Request, db: Session = Depends(get_db)):
 
     resp = requests.post(token_url, headers=headers, data=data)
     if resp.status_code != 200:
+        logger.error(f"Upstox token exchange failed: {resp.text}")
         raise HTTPException(status_code=400, detail=f"Upstox token exchange failed: {resp.text}")
 
     json_resp = resp.json()
     access_token = json_resp.get("access_token")
+    
+    if not access_token:
+        raise HTTPException(status_code=400, detail="No access_token in Upstox response")
 
-    # Persist the server-side Upstox token for background data fetching.
-    # If the request includes an app JWT we can attribute the token to the user.
+    # Store global token in Redis for background data fetching
+    _store_global_upstox_token(access_token)
+    logger.info("Upstox OAuth successful - token stored in Redis")
+
+    # Persist to user DB if app JWT provided
     app_jwt = request.headers.get("X-App-Token") or request.query_params.get("app_token")
-    if app_jwt and access_token:
+    if app_jwt:
         payload = verify_token(app_jwt)
         if payload:
             user = db.query(User).filter(User.id == payload.get("sub")).first()
             if user:
                 user.upstox_access_token = access_token
-                # Upstox tokens expire at 03:30 AM next day
-                user.upstox_token_expiry = (
-                    datetime.utcnow().replace(hour=22, minute=0, second=0)  # ~03:30 IST
-                )
+                user.upstox_token_expiry = datetime.utcnow().replace(hour=22, minute=0, second=0)
                 db.commit()
                 logger.info(f"Stored Upstox token for user {user.email}")
 
-    # Also store a global "server" token in Redis so the scheduler can use it
-    _store_global_upstox_token(access_token)
+    # Redirect browser to frontend with success flag
+    sec_fetch_mode = request.headers.get("sec-fetch-mode", "")
+    sec_fetch_dest = request.headers.get("sec-fetch-dest", "")
+    if sec_fetch_mode == "navigate" or sec_fetch_dest == "document":
+        return RedirectResponse(f"{FRONTEND_BASE_URL}?upstox_connected=true")
 
     return json_resp
 

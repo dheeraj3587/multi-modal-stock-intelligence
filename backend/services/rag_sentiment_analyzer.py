@@ -1,8 +1,4 @@
-"""
-RAG-based sentiment analyzer using AI models with vector search context.
-Supports both OpenAI and local models (via Ollama).
-Includes robust retry logic, timeouts, and error handling.
-"""
+"""RAG-based sentiment analyzer using AI models with vector search."""
 
 import os
 import json
@@ -28,14 +24,7 @@ class RAGSentimentAnalyzer:
         model_name: Optional[str] = None,
         api_key: Optional[str] = None
     ):
-        """
-        Initialize RAG sentiment analyzer.
-        
-        Args:
-            model_type: "openai", "anthropic", "gemini", or "local" (Ollama)
-            model_name: Specific model name (e.g., "gpt-4", "llama3", "claude-3-5-sonnet")
-            api_key: API key for cloud models
-        """
+        """Initialize with model_type: 'openai', 'anthropic', 'gemini', or 'local'."""
         self.model_type = model_type
         self.model_name = model_name
         self.api_key = api_key or os.getenv(f"{model_type.upper()}_API_KEY")
@@ -79,18 +68,7 @@ class RAGSentimentAnalyzer:
         articles: List[Dict],
         context_articles: List[Tuple[Dict, float]]
     ) -> str:
-        """
-        Create a detailed prompt for sentiment analysis.
-        
-        Args:
-            company_name: Company name
-            symbol: Stock symbol
-            articles: Recent articles
-            context_articles: Similar articles from vector search with scores
-            
-        Returns:
-            Formatted prompt string
-        """
+        """Create prompt for sentiment analysis."""
         prompt = f"""You are a financial sentiment analyst. Analyze the sentiment for {company_name} ({symbol}) based on recent news articles.
 
 ## Recent News Articles:
@@ -140,7 +118,19 @@ Respond ONLY with valid JSON in this exact format:
             
             if start_idx != -1 and end_idx > start_idx:
                 json_str = response[start_idx:end_idx]
-                return json.loads(json_str)
+                result = json.loads(json_str)
+                
+                # Normalize confidence: if > 1.0, LLM returned as percentage (e.g., 72.5 instead of 0.725)
+                confidence = float(result.get("confidence", 0.5))
+                if confidence > 1.0:
+                    confidence = confidence / 100.0
+                result["confidence"] = max(0.0, min(1.0, confidence))  # Clamp to 0-1
+                
+                # Normalize sentiment_score to -1.0 to 1.0 range
+                score = float(result.get("sentiment_score", 0.0))
+                result["sentiment_score"] = max(-1.0, min(1.0, score))
+                
+                return result
             else:
                 # Couldn't find JSON, return default
                 return self._default_sentiment_response()
@@ -165,18 +155,7 @@ Respond ONLY with valid JSON in this exact format:
         articles: List[Dict],
         context_articles: Optional[List[Tuple[Dict, float]]] = None
     ) -> Dict:
-        """
-        Analyze sentiment using RAG approach with robust retry logic.
-        
-        Args:
-            company_name: Company name
-            symbol: Stock symbol
-            articles: Recent news articles
-            context_articles: Historical context from vector search
-            
-        Returns:
-            Sentiment analysis dict with score, confidence, reasoning, etc.
-        """
+        """Analyze sentiment using RAG approach with retry logic."""
         if not articles:
             return {
                 "sentiment_score": 0.0,
@@ -284,17 +263,7 @@ Respond ONLY with valid JSON in this exact format:
         articles_dict: Dict[str, List[Dict]],
         context_dict: Optional[Dict[str, List[Tuple[Dict, float]]]] = None
     ) -> Dict[str, Dict]:
-        """
-        Analyze sentiment for multiple stocks using a single LLM call (or few calls).
-        
-        Args:
-            stocks: List of dicts with 'symbol' and 'company_name' keys
-            articles_dict: Dict mapping symbol to articles list
-            context_dict: Dict mapping symbol to context articles
-            
-        Returns:
-            Dict mapping symbol to sentiment analysis
-        """
+        """Analyze sentiment for multiple stocks in a single LLM call."""
         if not stocks:
             return {}
 
@@ -363,10 +332,18 @@ Example Format:
             for symbol in valid_stocks:
                 if symbol in parsed:
                     data = parsed[symbol]
-                     # Ensure keys exist
+                    # Normalize confidence: if > 1.0, LLM returned as percentage
+                    conf = float(data.get("confidence", 0.5))
+                    if conf > 1.0:
+                        conf = conf / 100.0
+                    conf = max(0.0, min(1.0, conf))
+                    
+                    score = float(data.get("sentiment_score", 0.0))
+                    score = max(-1.0, min(1.0, score))
+                    
                     results[symbol] = {
-                        "sentiment_score": float(data.get("sentiment_score", 0.0)),
-                        "confidence": float(data.get("confidence", 0.5)),
+                        "sentiment_score": score,
+                        "confidence": conf,
                         "risk_level": str(data.get("risk_level", "MEDIUM")),
                         "reasoning": "Batch analysis based on recent headlines",
                         "analyzed_at": datetime.now().isoformat()
@@ -399,17 +376,7 @@ def create_sentiment_analyzer(
     model_name: str = None,
     api_key: str = None
 ) -> RAGSentimentAnalyzer:
-    """
-    Create a sentiment analyzer with the specified configuration.
-    
-    Args:
-        model_type: "openai", "anthropic", "gemini", or "local"
-        model_name: Specific model name
-        api_key: API key for cloud models
-        
-    Returns:
-        RAGSentimentAnalyzer instance
-    """
+    """Factory function to create sentiment analyzer from environment config."""
     # Read from env first, then auto-detect
     if not model_type:
         model_type = os.getenv("AI_MODEL_TYPE", "").lower()
