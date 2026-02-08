@@ -551,6 +551,14 @@ async def get_stock_analysis(
         debt_level = "Unknown"
         
         # Get ML-based price prediction
+
+        # Get ML-based price prediction
+        predicted_price = ltp
+        forecast_confidence = 0.0
+        short_term = "neutral"
+        long_term = "neutral"
+        recommendation = "hold"
+
         try:
             # Fetch historical data for better prediction
             historical_candles = await market_service.get_historical_data(
@@ -569,33 +577,19 @@ async def get_stock_analysis(
                 sentiment_score=sentiment_score
             )
             
-            predicted_price = prediction_result["predicted_price"]
-            forecast_confidence = prediction_result["forecast_confidence"]
-            short_term = prediction_result["short_term_outlook"]
-            long_term = prediction_result["long_term_outlook"]
-            recommendation = prediction_result["recommendation"]
-            
-            logger.info(f"ML prediction for {symbol}: {predicted_price} (confidence: {forecast_confidence}%)")
+            if prediction_result:
+                predicted_price = prediction_result["predicted_price"]
+                forecast_confidence = prediction_result["forecast_confidence"]
+                short_term = prediction_result["short_term_outlook"]
+                long_term = prediction_result["long_term_outlook"]
+                recommendation = prediction_result["recommendation"]
+                logger.info(f"ML prediction for {symbol}: {predicted_price} (confidence: {forecast_confidence}%)")
+            else:
+                logger.debug(f"ML prediction unavailable for {symbol} (insufficient data or no model)")
             
         except Exception as e:
-            logger.error(f"ML prediction failed for {symbol}: {e}. Using fallback.")
-            # Fallback to sentiment-based prediction
-            if sentiment == "bullish":
-                predicted_price = ltp * 1.08
-                short_term = "bullish"
-                long_term = "bullish"
-                recommendation = "buy"
-            elif sentiment == "bearish":
-                predicted_price = ltp * 0.92
-                short_term = "bearish"
-                long_term = "bearish"
-                recommendation = "sell"
-            else:
-                predicted_price = ltp
-                short_term = "neutral"
-                long_term = "neutral"
-                recommendation = "hold"
-            forecast_confidence = sentiment_confidence * 100
+            logger.error(f"ML prediction failed for {symbol}: {e}")
+            # Defaults (neutral) will be used
         
         result = {
             "symbol": symbol,

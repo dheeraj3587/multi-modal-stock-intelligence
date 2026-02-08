@@ -134,13 +134,14 @@ class ModelInferenceService:
         
         logger.info(f"Loaded {model_type} model: {model_name}")
     
+
     def predict_price(
         self, 
         symbol: str, 
         current_price: float, 
         price_history: List[float] = None,
         sentiment_score: float = 0.0
-    ) -> Dict:
+    ) -> Optional[Dict]:
         """
         Predict future price for a stock.
         
@@ -152,10 +153,10 @@ class ModelInferenceService:
             
         Returns:
             Dict with predicted_price, confidence, short_term_outlook, long_term_outlook
+            OR None if prediction cannot be made.
         """
         if not TORCH_AVAILABLE or not self.models:
-            # Fallback to sentiment-based prediction
-            return self._fallback_prediction(current_price, sentiment_score)
+            return None
         
         try:
             # Use the first available model (or implement model selection logic)
@@ -167,13 +168,13 @@ class ModelInferenceService:
             lookback = metadata.get('lookback', 60)
             input_dim = metadata.get('input_dim', 20)
             
+            # Check sufficient history
+            if not price_history or len(price_history) < lookback:
+                # Insufficient data for prediction
+                return None
+
             # Create feature vector
-            if price_history and len(price_history) >= lookback:
-                # Use actual price history
-                features = self._prepare_features(price_history[-lookback:], sentiment_score, input_dim)
-            else:
-                # Generate synthetic features based on current price and sentiment
-                features = self._generate_synthetic_features(current_price, sentiment_score, lookback, input_dim)
+            features = self._prepare_features(price_history[-lookback:], sentiment_score, input_dim)
             
             # Convert to tensor
             input_tensor = torch.tensor(features, dtype=torch.float32).unsqueeze(0)
@@ -209,7 +210,7 @@ class ModelInferenceService:
             
         except Exception as e:
             logger.error(f"Prediction failed for {symbol}: {e}")
-            return self._fallback_prediction(current_price, sentiment_score)
+            return None
     
     def _prepare_features(
         self, 
@@ -248,28 +249,6 @@ class ModelInferenceService:
                 features[i, 4] = normalized_prices[start:i+1].std() if i > start else 0
         
         # Sentiment feature (repeated for all timesteps)
-        features[:, 5] = sentiment_score
-        
-        return features
-    
-    def _generate_synthetic_features(
-        self, 
-        current_price: float, 
-        sentiment_score: float,
-        lookback: int,
-        input_dim: int
-    ) -> np.ndarray:
-        """Generate synthetic features when history is not available."""
-        features = np.zeros((lookback, input_dim))
-        
-        # Generate synthetic price series based on sentiment
-        trend = sentiment_score * 0.02  # 2% drift per sentiment unit
-        noise = np.random.randn(lookback) * 0.01
-        
-        prices = current_price * (1 + np.cumsum(trend + noise))
-        normalized_prices = (prices - prices.mean()) / (prices.std() + 1e-8)
-        
-        features[:, 0] = normalized_prices
         features[:, 5] = sentiment_score
         
         return features
@@ -322,36 +301,6 @@ class ModelInferenceService:
             recommendation = "hold"
         
         return short_term, long_term, recommendation
-    
-    def _fallback_prediction(self, current_price: float, sentiment_score: float) -> Dict:
-        """Fallback prediction when models are not available."""
-        # Simple sentiment-based prediction
-        if sentiment_score > 0.2:
-            predicted_price = current_price * 1.08
-            short_term = "bullish"
-            long_term = "bullish"
-            recommendation = "buy"
-        elif sentiment_score < -0.2:
-            predicted_price = current_price * 0.92
-            short_term = "bearish"
-            long_term = "bearish"
-            recommendation = "sell"
-        else:
-            predicted_price = current_price
-            short_term = "neutral"
-            long_term = "neutral"
-            recommendation = "hold"
-        
-        confidence = 50 + abs(sentiment_score) * 30
-        
-        return {
-            "predicted_price": round(predicted_price, 2),
-            "forecast_confidence": round(confidence, 1),
-            "short_term_outlook": short_term,
-            "long_term_outlook": long_term,
-            "recommendation": recommendation,
-            "model_used": "fallback"
-        }
 
 
 # Singleton instance

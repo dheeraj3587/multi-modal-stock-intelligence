@@ -397,23 +397,24 @@ def _refresh_single_analysis(symbol: str, quotes: Dict):
             "Medium" if sentiment != "bearish" else "Low"
         )
 
-        try:
-            prediction_result = model_inference_service.predict_price(
-                symbol=symbol, current_price=ltp, price_history=[], sentiment_score=score,
-            )
+
+        prediction_result = model_inference_service.predict_price(
+            symbol=symbol, current_price=ltp, price_history=[], sentiment_score=score,
+        )
+        
+        if prediction_result:
             predicted_price = prediction_result["predicted_price"]
             forecast_confidence = prediction_result["forecast_confidence"]
             short_term = prediction_result["short_term_outlook"]
             long_term = prediction_result["long_term_outlook"]
             recommendation = prediction_result["recommendation"]
-        except Exception:
-            if sentiment == "bullish":
-                predicted_price, short_term, long_term, recommendation = ltp * 1.08, "bullish", "bullish", "buy"
-            elif sentiment == "bearish":
-                predicted_price, short_term, long_term, recommendation = ltp * 0.92, "bearish", "bearish", "sell"
-            else:
-                predicted_price, short_term, long_term, recommendation = ltp, "neutral", "neutral", "hold"
-            forecast_confidence = confidence * 100
+        else:
+            # No model prediction available - default to neutral
+            predicted_price = ltp
+            forecast_confidence = 0.0
+            short_term = "neutral"
+            long_term = "neutral"
+            recommendation = "hold"
 
         analysis = {
             "symbol": symbol,

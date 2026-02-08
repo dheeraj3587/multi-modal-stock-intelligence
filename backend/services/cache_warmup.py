@@ -456,35 +456,27 @@ def _build_single_analysis(symbol: str, quotes: Dict) -> Optional[Dict]:
         )
 
         # ML prediction (fallback to sentiment-based)
-        try:
-            prediction_result = model_inference_service.predict_price(
-                symbol=symbol,
-                current_price=ltp,
-                price_history=[],
-                sentiment_score=score,
-            )
+
+        # ML prediction (fallback to neutral if no model)
+        prediction_result = model_inference_service.predict_price(
+            symbol=symbol,
+            current_price=ltp,
+            price_history=[],
+            sentiment_score=score,
+        )
+        
+        if prediction_result:
             predicted_price = prediction_result["predicted_price"]
             forecast_confidence = prediction_result["forecast_confidence"]
             short_term = prediction_result["short_term_outlook"]
             long_term = prediction_result["long_term_outlook"]
             recommendation = prediction_result["recommendation"]
-        except Exception:
-            if sentiment == "bullish":
-                predicted_price = ltp * 1.08
-                short_term = "bullish"
-                long_term = "bullish"
-                recommendation = "buy"
-            elif sentiment == "bearish":
-                predicted_price = ltp * 0.92
-                short_term = "bearish"
-                long_term = "bearish"
-                recommendation = "sell"
-            else:
-                predicted_price = ltp
-                short_term = "neutral"
-                long_term = "neutral"
-                recommendation = "hold"
-            forecast_confidence = confidence * 100
+        else:
+            predicted_price = ltp
+            forecast_confidence = 0.0
+            short_term = "neutral"
+            long_term = "neutral"
+            recommendation = "hold"
 
         analysis = {
             "symbol": symbol,
