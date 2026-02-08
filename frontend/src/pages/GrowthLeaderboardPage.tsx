@@ -231,10 +231,10 @@ export function GrowthLeaderboardPage() {
   /* ─── render ─── */
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2 }}
-      className="font-sans text-gray-900 dark:text-gray-100 min-h-screen"
+      initial={{ opacity: 0, y: 12, filter: 'blur(4px)' }}
+      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      className="font-sans text-text-primary min-h-screen"
     >
       <main className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* ───── LEFT COL (8) ───── */}

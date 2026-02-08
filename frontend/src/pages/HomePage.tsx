@@ -18,12 +18,26 @@ import { CompanyLogo } from '../components/shared/CompanyLogo';
 
 const stagger = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.05 } },
+  show: { transition: { staggerChildren: 0.06 } },
 };
 const fadeUp = {
-  hidden: { opacity: 0, y: 10 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.25 } },
+  hidden: { opacity: 0, y: 14, filter: 'blur(4px)' },
+  show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] } },
 };
+
+function pricesToSvgPath(prices: number[], w = 100, h = 100, pad = 5): string {
+  if (prices.length < 2) return '';
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  const range = max - min || 1;
+  return prices
+    .map((p, i) => {
+      const x = (i / (prices.length - 1)) * w;
+      const y = pad + ((max - p) / range) * (h - pad * 2);
+      return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(' ');
+}
 
 const TIMEFRAMES = ['1h', '8h', '1d', '1w', '1m', '6m', '1y'];
 
@@ -58,8 +72,26 @@ export function HomePage() {
     return indices.reduce((s, idx) => s + idx.changePercent, 0) / indices.length;
   }, [indices]);
 
-  // Generate random bar heights for background visual
-  const bars = useMemo(() => Array.from({ length: 80 }, () => Math.floor(Math.random() * 70) + 15), []);
+  const chartPaths = useMemo(() => {
+    if (!stocks || stocks.length < 2) return { primary: '', secondary: '' };
+    const sorted = [...stocks].sort((a, b) => b.price - a.price);
+    const primaryPrices = sorted.slice(0, Math.ceil(sorted.length / 2)).map((s) => s.price);
+    const secondaryPrices = sorted.slice(Math.ceil(sorted.length / 2)).map((s) => s.price);
+    return {
+      primary: pricesToSvgPath(primaryPrices),
+      secondary: pricesToSvgPath(secondaryPrices),
+    };
+  }, [stocks]);
+
+  const bars = useMemo(() => {
+    if (!stocks || stocks.length === 0) return Array.from({ length: 80 }, () => Math.floor(Math.random() * 70) + 15);
+    const result: number[] = [];
+    for (let i = 0; i < 80; i++) {
+      const s = stocks[i % stocks.length];
+      result.push(Math.max(10, Math.min(90, 50 + s.changePercent * 5)));
+    }
+    return result;
+  }, [stocks]);
 
   return (
     <PageTransition>
@@ -153,29 +185,44 @@ export function HomePage() {
 
           {/* Chart Area (Visual) */}
           <div className="flex-1 relative w-full overflow-hidden rounded-xl">
-            {/* SVG Chart Lines */}
+            {/* Data-driven SVG Chart Lines */}
             <svg className="absolute bottom-0 left-0 w-full h-[70%] z-10" preserveAspectRatio="none" viewBox="0 0 100 100">
               <defs>
                 <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
                   <stop offset="0%" stopColor="rgba(255,255,255,0.4)" />
                   <stop offset="100%" stopColor="rgba(255,255,255,0.9)" />
                 </linearGradient>
+                <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="rgba(255,255,255,0.08)" />
+                  <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+                </linearGradient>
               </defs>
-              {/* Secondary (yellow) line */}
-              <path
-                d="M0,80 Q10,80 15,60 T30,70 T45,65 T60,50 T75,65 T85,35 T100,35"
-                fill="none"
-                stroke="#FBBF24"
-                strokeWidth="0.5"
-                opacity="0.6"
-              />
-              {/* Primary (white) line */}
-              <path
-                d="M0,60 Q10,75 15,70 T30,65 T45,70 T60,45 T75,60 T90,70 T100,55"
-                fill="none"
-                stroke="url(#lineGrad)"
-                strokeWidth="0.8"
-              />
+              {chartPaths.secondary && (
+                <path
+                  d={chartPaths.secondary}
+                  fill="none"
+                  stroke="#FBBF24"
+                  strokeWidth="0.5"
+                  opacity="0.6"
+                  className="animate-draw-line"
+                />
+              )}
+              {chartPaths.primary && (
+                <>
+                  <path
+                    d={chartPaths.primary}
+                    fill="none"
+                    stroke="url(#lineGrad)"
+                    strokeWidth="0.8"
+                    className="animate-draw-line"
+                  />
+                  <path
+                    d={`${chartPaths.primary} L100,100 L0,100 Z`}
+                    fill="url(#areaFill)"
+                    className="animate-fade-in-up"
+                  />
+                </>
+              )}
             </svg>
 
             {/* Background Bars */}

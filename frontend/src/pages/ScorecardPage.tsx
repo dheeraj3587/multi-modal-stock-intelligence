@@ -131,7 +131,7 @@ export function ScorecardPage() {
                     {Object.entries(sc.key_stats).map(([key, val]) => (
                       <div key={key} className="rounded bg-surface-2 px-3 py-2">
                         <div className="text-[11px] text-text-tertiary">{key}</div>
-                        <div className="text-sm font-mono font-medium text-text-primary mt-0.5">{val}</div>
+                        <div className="text-sm font-mono font-medium text-text-primary mt-0.5">{String(val ?? '—')}</div>
                       </div>
                     ))}
                   </div>
